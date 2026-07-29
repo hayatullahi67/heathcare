@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useReferral } from '../../context/ReferralContext';
-import { INITIAL_HOSPITALS } from '../../mock/initialData';
 import {
   CheckCircle2,
   ShieldAlert,
@@ -15,10 +14,8 @@ import {
 
 export const NewRequest: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, hospitalsList } = useAuth();
+  const { currentUser } = useAuth();
   const { createReferral } = useReferral();
-
-  const displayHospitals = hospitalsList && hospitalsList.length > 0 ? hospitalsList : INITIAL_HOSPITALS;
 
   if (!currentUser) return null;
 
@@ -65,7 +62,6 @@ export const NewRequest: React.FC = () => {
     // Fall back to placeholders if state is empty
     const finalPatientName = patientName.trim() || patientNamePlaceholder;
     const finalPatientId = patientId.trim() || patientIdPlaceholder;
-    const finalRetireeName = retireeName.trim() || currentUser.name || '';
     const finalDepartmentAtExit = departmentAtExit.trim() || departmentPlaceholder;
 
     if (!hospitalName.trim()) {

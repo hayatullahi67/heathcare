@@ -1,14 +1,11 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useReferral } from '../../context/ReferralContext';
 import { useAuth } from '../../context/AuthContext';
-import { Badge } from '../../components/common/Badge';
-import { ClipboardList, Users, Building, CheckCircle, Clock, PlusCircle, ArrowRight, ShieldAlert } from 'lucide-react';
+import { ClipboardList, Building, CheckCircle, Clock } from 'lucide-react';
 
 export const Overview: React.FC = () => {
-  const navigate = useNavigate();
   const { referrals, activityLogs } = useReferral();
-  const { users, hospitalsList } = useAuth();
+  const { hospitalsList } = useAuth();
 
   const [logSearch, setLogSearch] = React.useState('');
   const [logFilter, setLogFilter] = React.useState('ALL');

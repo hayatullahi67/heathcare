@@ -150,11 +150,11 @@ export const NewRequest: React.FC = () => {
       </div>
 
       {success ? (
-        <div className="bg-bg-secondary border border-border-color rounded-xl p-8 shadow-md flex flex-col items-center justify-center text-center gap-4 py-12">
+        <div className="bg-bg-secondary border border-border-color rounded-xl p-6 sm:p-8 shadow-md flex flex-col items-center justify-center text-center gap-4 py-12">
           <div className="w-16 h-16 rounded-full bg-success/15 text-success flex items-center justify-center shrink-0">
             <CheckCircle2 size={40} />
           </div>
-          <h2 className="font-extrabold text-2xl text-text-primary m-0">CBN Referral Form Submitted Securely</h2>
+          <h2 className="font-extrabold text-xl sm:text-2xl text-text-primary m-0">CBN Referral Form Submitted Securely</h2>
           <p className="text-text-muted text-sm max-w-sm m-0 leading-relaxed">
             Your Retiree Medical Referral Form has been filed. We are forwarding you back to the tracker overview tab...
           </p>

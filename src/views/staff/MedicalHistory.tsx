@@ -123,50 +123,93 @@ export const MedicalHistory: React.FC = () => {
           <p className="text-muted text-sm">Try adjusting your search criteria or keywords.</p>
         </div>
       ) : (
-        <div className="card table-container" style={{ padding: '0', overflow: 'hidden' }}>
-          <table className="table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
-                <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>REFERENCE</th>
-                <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CLINIC PARTNER</th>
-                <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DATE SUBMITTED</th>
-                <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PROCEDURAL INDICATION</th>
-                <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>STATUS</th>
-                <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>ACTION</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReferrals.map(ref => (
-                <tr 
-                  key={ref.id} 
-                  onClick={() => setSelectedCase(ref)}
-                  style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'var(--transition)' }}
-                  className="archive-table-row"
-                >
-                  <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', fontWeight: 700 }} className="font-mono text-primary-color">{ref.id}</td>
-                  <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-primary)' }}>{ref.hospitalName}</td>
-                  <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>{formatDateString(ref.createdAt)}</td>
-                  <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>{resolveProcedureType(ref.diagnosisDescription)}</td>
-                  <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem' }}>
-                    <Badge status={ref.status} />
-                  </td>
-                  <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', textAlign: 'right' }}>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedCase(ref);
-                      }}
-                      className="btn btn-secondary btn-sm"
-                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px' }}
-                    >
-                      View File
-                    </button>
-                  </td>
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden-mobile card table-container" style={{ padding: '0', overflow: 'hidden' }}>
+            <table className="table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>REFERENCE</th>
+                  <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CLINIC PARTNER</th>
+                  <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DATE SUBMITTED</th>
+                  <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PROCEDURAL INDICATION</th>
+                  <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>STATUS</th>
+                  <th style={{ padding: '1rem 1.25rem', fontWeight: 800, fontSize: '0.725rem', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'right' }}>ACTION</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredReferrals.map(ref => (
+                  <tr 
+                    key={ref.id} 
+                    onClick={() => setSelectedCase(ref)}
+                    style={{ borderBottom: '1px solid var(--border-color)', cursor: 'pointer', transition: 'var(--transition)' }}
+                    className="archive-table-row"
+                  >
+                    <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', fontWeight: 700 }} className="font-mono text-primary-color">{ref.id}</td>
+                    <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', fontWeight: 700, color: 'var(--text-primary)' }}>{ref.hospitalName}</td>
+                    <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>{formatDateString(ref.createdAt)}</td>
+                    <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>{resolveProcedureType(ref.diagnosisDescription)}</td>
+                    <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem' }}>
+                      <Badge status={ref.status} />
+                    </td>
+                    <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', textAlign: 'right' }}>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCase(ref);
+                        }}
+                        className="btn btn-secondary btn-sm"
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px' }}
+                      >
+                        View File
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="visible-mobile flex flex-col gap-3">
+            {filteredReferrals.map(ref => (
+              <div 
+                key={ref.id} 
+                onClick={() => setSelectedCase(ref)}
+                className="bg-bg-secondary border border-border-color rounded-xl p-4 flex flex-col gap-3 hover:bg-bg-primary/30 transition-colors cursor-pointer active:scale-[0.99] shadow-sm"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col">
+                    <span className="font-mono text-[0.7rem] text-primary-color font-bold">{ref.id}</span>
+                    <span className="font-bold text-sm text-text-primary mt-0.5">{ref.hospitalName}</span>
+                  </div>
+                  <Badge status={ref.status} />
+                </div>
+                
+                <div className="flex flex-col gap-1 border-t border-border-color pt-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-text-muted">Indication:</span>
+                    <span className="text-text-secondary font-semibold">{resolveProcedureType(ref.diagnosisDescription)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-text-muted">Submitted:</span>
+                    <span className="text-text-secondary font-semibold">{formatDateString(ref.createdAt)}</span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedCase(ref);
+                  }}
+                  className="btn btn-secondary btn-sm w-full mt-1 font-bold py-2 text-xs"
+                >
+                  View Case File
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Premium Case Details File Modal */}
@@ -378,7 +421,7 @@ export const MedicalHistory: React.FC = () => {
               </button>
             </div>
 
-            <div className="modal-body paper-document-body" style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto', padding: '2.5rem', backgroundColor: '#ffffff', color: '#1e293b' }}>
+            <div className="modal-body paper-document-body responsive-paper-body">
               
               {/* Paper Form Title */}
               <div className="paper-form-title-section" style={{ textAlign: 'center', borderBottom: '2px double #475569', paddingBottom: '1.25rem', marginBottom: '2rem' }}>
@@ -393,7 +436,7 @@ export const MedicalHistory: React.FC = () => {
                   <div className="paper-section" style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '1.25rem', backgroundColor: '#ffffff' }}>
                     <h4 className="paper-section-header" style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', margin: '-1.25rem -1.25rem 1.25rem -1.25rem', padding: '0.65rem 1.25rem', backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>(C) COMPLETED BY THE HOSPITAL/CLINIC</h4>
                     
-                    <div className="paper-input-grid display-only" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', fontSize: '0.8rem' }}>
+                    <div className="paper-input-grid display-only responsive-paper-grid" style={{ gap: '0.75rem', fontSize: '0.8rem' }}>
                       <div className="form-group-full" style={{ gridColumn: 'span 2', borderBottom: '1px dashed #cbd5e1', paddingBottom: '0.35rem' }}>
                         <span className="paper-label" style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#475569', textTransform: 'uppercase', marginBottom: '0.25rem' }}>HOSPITAL/CLINIC NAME</span>
                         <p className="paper-display-value font-bold" style={{ margin: '0.15rem 0 0 0', fontSize: '0.85rem', color: '#0f172a', fontWeight: 700 }}>{showDetailedReport.treatmentReport.hospitalClinicName || showDetailedReport.hospitalName}</p>
@@ -444,7 +487,7 @@ export const MedicalHistory: React.FC = () => {
                   <div className="paper-section" style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '1.25rem', backgroundColor: '#ffffff', marginTop: '1rem' }}>
                     <h4 className="paper-section-header" style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', margin: '-1.25rem -1.25rem 1.25rem -1.25rem', padding: '0.65rem 1.25rem', backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>CLINICAL REPORTS</h4>
                     
-                    <div className="clinical-reports-split-table display-only" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', border: '1px solid #94a3b8', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div className="clinical-reports-split-table display-only responsive-clinical-split" style={{ overflow: 'hidden' }}>
                       <div className="clinical-column left-col" style={{ padding: '1rem', borderRight: '1px solid #94a3b8', backgroundColor: '#ffffff' }}>
                         <div className="form-group-full">
                           <span className="paper-label" style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#475569', textTransform: 'uppercase', marginBottom: '0.25rem' }}>DIAGNOSIS (CONFIRMED CLINICAL FINDINGS)</span>
@@ -480,7 +523,7 @@ export const MedicalHistory: React.FC = () => {
                     )}
 
                     {/* Doctor verification details */}
-                    <div className="signature-flex-container p-3 bg-paper-light" style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '1rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                    <div className="signature-flex-container p-3 bg-paper-light responsive-signature-flex" style={{ marginTop: '1rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
                       <div style={{ flex: 2 }}>
                         <span className="paper-label" style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#475569', textTransform: 'uppercase', marginBottom: '0.25rem' }}>ATTENDING PHYSICIAN</span>
                         <p className="paper-display-value font-bold" style={{ margin: '0.15rem 0 0 0', fontSize: '0.85rem', color: '#0f172a', fontWeight: 700 }}>{showDetailedReport.treatmentReport.attendingDoctor || showDetailedReport.treatmentReport.physicianName}</p>
@@ -508,7 +551,7 @@ export const MedicalHistory: React.FC = () => {
                   <div className="paper-section" style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '1.25rem', backgroundColor: '#ffffff', marginTop: '1.5rem' }}>
                     <h4 className="paper-section-header" style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', margin: '-1.25rem -1.25rem 1.25rem -1.25rem', padding: '0.65rem 1.25rem', backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>(D) MEDICAL BILL / INVOICE SUMMARY</h4>
                     
-                    <div className="billing-table-wrapper" style={{ border: '1px solid #cbd5e1', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div className="billing-table-wrapper" style={{ border: '1px solid #cbd5e1', borderRadius: '4px', overflowX: 'auto' }}>
                       <table className="paper-billing-table display-only" style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                           <tr style={{ backgroundColor: '#f1f5f9' }}>
@@ -670,7 +713,7 @@ export const MedicalHistory: React.FC = () => {
                   <div className="paper-section" style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '1.25rem', backgroundColor: '#ffffff', marginTop: '1.5rem' }}>
                     <h4 className="paper-section-header" style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a', textTransform: 'uppercase', margin: '-1.25rem -1.25rem 1.25rem -1.25rem', padding: '0.65rem 1.25rem', backgroundColor: '#f1f5f9', borderBottom: '1px solid #cbd5e1', borderTopLeftRadius: '4px', borderTopRightRadius: '4px' }}>CONFIRMED BY (RETIREE / PENSIONER / DEPENDANT)</h4>
                     
-                    <div className="signature-flex-container p-3 bg-paper-light" style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-end', flexWrap: 'wrap', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                    <div className="signature-flex-container p-3 bg-paper-light responsive-signature-flex" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
                       <div style={{ flex: 2 }}>
                         <span className="paper-label" style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#475569', textTransform: 'uppercase', marginBottom: '0.25rem' }}>RETIREE / PENSIONER NAME</span>
                         <p className="paper-display-value font-bold" style={{ margin: '0.15rem 0 0 0', fontSize: '0.85rem', color: '#0f172a', fontWeight: 700 }}>{showDetailedReport.treatmentReport.confirmedByPatientName || showDetailedReport.patientName || showDetailedReport.staffName}</p>
@@ -736,6 +779,115 @@ export const MedicalHistory: React.FC = () => {
         .search-input-field:focus {
           border-color: #005f73 !important;
           box-shadow: 0 0 0 3px rgba(0, 95, 115, 0.15) !important;
+        }
+
+        /* Filter Search Bar Responsiveness */
+        .filter-search-bar {
+          display: flex;
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: center;
+          gap: 1rem;
+          width: 100%;
+        }
+
+        @media (max-width: 640px) {
+          .filter-search-bar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+          }
+          .filter-search-bar .flex-shrink-0 {
+            align-self: flex-end;
+          }
+        }
+
+        /* Responsive Patient Brief Grid inside modal */
+        @media (max-width: 480px) {
+          .patient-brief-grid {
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+          }
+          .brief-column.align-right {
+            align-items: flex-start !important;
+            text-align: left !important;
+          }
+        }
+
+        /* Responsive Paper Document Body and Layouts */
+        .responsive-paper-body {
+          max-height: calc(100vh - 180px);
+          overflow-y: auto;
+          background-color: #ffffff;
+          color: #1e293b;
+          padding: 2.5rem;
+        }
+
+        @media (max-width: 640px) {
+          .responsive-paper-body {
+            padding: 1.25rem !important;
+          }
+        }
+
+        .responsive-paper-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        @media (max-width: 640px) {
+          .responsive-paper-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .responsive-paper-grid .form-group-full {
+            grid-column: span 1 !important;
+          }
+        }
+
+        .responsive-clinical-split {
+          display: grid;
+          grid-template-columns: 1.2fr 1fr;
+          border: 1px solid #94a3b8;
+          border-radius: 4px;
+        }
+
+        @media (max-width: 640px) {
+          .responsive-clinical-split {
+            grid-template-columns: 1fr !important;
+          }
+          .responsive-clinical-split .left-col {
+            border-right: none !important;
+            border-bottom: 1px solid #94a3b8 !important;
+          }
+        }
+
+        .responsive-signature-flex {
+          display: flex;
+          gap: 1.25rem;
+          align-items: flex-end;
+          flex-wrap: wrap;
+        }
+
+        @media (max-width: 640px) {
+          .responsive-signature-flex {
+            flex-direction: column;
+            align-items: stretch !important;
+          }
+          .responsive-signature-flex > div {
+            flex: 1 1 auto !important;
+            width: 100% !important;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .discharge-row {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.25rem;
+          }
+          .discharge-value.text-wrap-value {
+            text-align: left !important;
+            max-width: 100% !important;
+          }
         }
 
         /* Premium History Modal Overrides */

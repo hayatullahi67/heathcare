@@ -196,7 +196,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               </div>
               <div className="user-details">
                 <p className="user-name">{currentUser.name}</p>
-                <p className="user-role">{currentUser.role}</p>
+                <p className="user-role">
+                  {currentUser.role === 'SUPER_ADMIN'
+                    ? 'Administrator'
+                    : currentUser.role === 'RETIRED_STAFF'
+                      ? 'Retired Staff'
+                      : 'Hospital Partner'}
+                </p>
               </div>
             </div>
 
@@ -512,26 +518,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           cursor: pointer;
         }
 
-        .sidebar-desktop, .mobile-toggle-btn {
+        .sidebar-desktop {
           display: flex;
+        }
+        .mobile-toggle-btn {
+          display: none;
         }
         .sidebar-mobile-overlay {
           display: none;
-        }
-
-        @media (max-width: 1024px) {
-          .sidebar-desktop {
-            display: none;
-          }
-          .main-content-wrapper {
-            margin-left: 0;
-          }
-          .mobile-toggle-btn {
-            display: flex;
-          }
-          .sidebar-mobile-overlay {
-            display: block;
-          }
         }
 
         /* Main structure */
@@ -571,11 +565,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           display: none;
         }
 
-        @media (max-width: 1024px) {
-          .mobile-toggle-btn {
-            display: block;
-          }
-        }
+        /* Media query overrides moved to bottom */
 
         .header-title {
           font-size: 1.25rem;
@@ -790,14 +780,20 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           color: var(--text-secondary);
         }
 
-        @media (max-width: 640px) {
-          .header-user-name {
-            display: none;
+        @media (max-width: 768px) {
+          .header-search-bar-wrapper {
+            display: none !important;
+          }
+          .user-text-info {
+            display: none !important;
           }
           .header-user-tag {
             border-left: none;
             padding-left: 0;
           }
+        }
+
+        @media (max-width: 640px) {
           .header {
             padding: 0 1rem;
           }
@@ -812,6 +808,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         @media (max-width: 640px) {
           .content-body {
             padding: 1rem;
+          }
+        }
+
+        /* Combined media query at bottom to guarantee correct cascade override */
+        @media (max-width: 1024px) {
+          .sidebar-desktop {
+            display: none !important;
+          }
+          .main-content-wrapper {
+            margin-left: 0 !important;
+          }
+          .mobile-toggle-btn {
+            display: flex !important;
+          }
+          .sidebar-mobile-overlay {
+            display: block !important;
           }
         }
       `}</style>

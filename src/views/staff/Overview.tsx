@@ -6,8 +6,7 @@ import {
   FileText,
   Clock,
   CheckCircle2,
-  ClipboardList,
-  Zap
+  ClipboardList
 } from 'lucide-react';
 
 export const Overview: React.FC = () => {
@@ -63,20 +62,23 @@ export const Overview: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 w-full animate-fade-in">
       {/* Welcome & Start Request Row */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex  justify-between items-start gap-4">
         <div>
           <h1 className="text-2xl font-bold text-text-primary tracking-tight m-0">Welcome back, {currentUser.name.split(' ')[0]}</h1>
           <p className="text-text-muted text-sm mt-1 mb-0">
             You have {pendingReviewsCount} medical requests pending authorization review.
           </p>
         </div>
+
+        <div className='w-[150px]'>
         <button
           onClick={() => navigate('/staff/new-request')}
-          className="bg-[#005f73] hover:bg-[#005f73]/90 text-white font-bold text-xs px-4.5 py-2.5 rounded-lg flex items-center gap-2 cursor-pointer shadow-sm transition-all shrink-0"
+          className="bg-[#005f73] hover:bg-[#005f73]/90 text-white w-full sm:w-[170px] h-10 flex items-center justify-center text-xs font-bold rounded-lg cursor-pointer shadow-sm transition-all shrink-0"
         >
-          <Zap size={16} fill="white" />
+          {/* <Zap size={16} fill="white" /> */}
           <span>Start New Request</span>
         </button>
+        </div>
       </div>
 
       {/* Metrics Grid (Stats Cards) */}
@@ -153,50 +155,99 @@ export const Overview: React.FC = () => {
         {userReferrals.length === 0 ? (
           <p className="text-text-muted text-sm text-center p-4 m-0">No requests submitted.</p>
         ) : (
-          <div className="block w-full overflow-x-auto -webkit-overflow-scrolling-touch">
-            <table className="w-full border-collapse m-0 min-w-[700px]">
-              <thead>
-                <tr className="border-b border-border-color text-text-muted text-xs">
-                  <th className="text-left pb-3 font-bold uppercase">Patient Name</th>
-                  <th className="text-left pb-3 font-bold uppercase">Type</th>
-                  <th className="text-left pb-3 font-bold uppercase">Date</th>
-                  <th className="text-left pb-3 font-bold uppercase">Reference</th>
-                  <th className="text-left pb-3 font-bold uppercase">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {userReferrals.slice(0, 4).map(ref => (
-                  <tr key={ref.id} className="border-b border-border-color last:border-none hover:bg-bg-primary/50 transition-colors">
-                    <td className="py-3 font-bold text-[0.875rem] text-text-primary">{ref.patientName || ref.staffName}</td>
-                    <td className="py-3 text-[0.875rem] text-text-secondary">{resolveProcedureType(ref.diagnosisDescription)}</td>
-                    <td className="py-3 text-[0.875rem] text-text-secondary">{formatDateString(ref.createdAt)}</td>
-                    <td className="py-3 font-mono text-xs text-text-secondary">{ref.id}</td>
-                    <td className="py-3">
-                      <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded whitespace-nowrap uppercase ${
-                        ref.status === 'TREATMENT_COMPLETED' || ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
-                          ? 'text-success bg-success-bg border border-success/10'
-                          : ref.status === 'INFO_REQUESTED'
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden-mobile w-full overflow-x-auto -webkit-overflow-scrolling-touch">
+              <table className="w-full border-collapse m-0 min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-border-color text-text-muted text-xs">
+                    <th className="text-left pb-3 font-bold uppercase">Patient Name</th>
+                    <th className="text-left pb-3 font-bold uppercase">Type</th>
+                    <th className="text-left pb-3 font-bold uppercase">Date</th>
+                    <th className="text-left pb-3 font-bold uppercase">Reference</th>
+                    <th className="text-left pb-3 font-bold uppercase">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userReferrals.slice(0, 4).map(ref => (
+                    <tr key={ref.id} className="border-b border-border-color last:border-none hover:bg-bg-primary/50 transition-colors">
+                      <td className="py-3 font-bold text-[0.875rem] text-text-primary">{ref.patientName || ref.staffName}</td>
+                      <td className="py-3 text-[0.875rem] text-text-secondary">{resolveProcedureType(ref.diagnosisDescription)}</td>
+                      <td className="py-3 text-[0.875rem] text-text-secondary">{formatDateString(ref.createdAt)}</td>
+                      <td className="py-3 font-mono text-xs text-text-secondary">{ref.id}</td>
+                      <td className="py-3">
+                        <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded whitespace-nowrap uppercase ${ref.status === 'TREATMENT_COMPLETED' || ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
+                            ? 'text-success bg-success-bg border border-success/10'
+                            : ref.status === 'INFO_REQUESTED'
+                              ? 'text-warning bg-warning-bg border border-warning/10'
+                              : ref.status === 'REJECTED'
+                                ? 'text-danger bg-danger-bg border border-danger/10'
+                                : 'text-text-secondary bg-bg-primary border border-border-color'
+                          }`}>
+                          {ref.status === 'TREATMENT_COMPLETED'
+                            ? 'Completed'
+                            : ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
+                              ? 'Approved'
+                              : ref.status === 'INFO_REQUESTED'
+                                ? 'Pending Info'
+                                : ref.status === 'REJECTED'
+                                  ? 'Rejected'
+                                  : 'Reviewing'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card List View */}
+            <div className="visible-mobile flex flex-col gap-3">
+              {userReferrals.slice(0, 4).map(ref => (
+                <div 
+                  key={ref.id} 
+                  onClick={() => navigate('/staff/history')}
+                  className="bg-bg-secondary border border-border-color rounded-xl p-4 flex flex-col gap-3 hover:bg-bg-primary/50 transition-colors cursor-pointer active:scale-[0.99] shadow-sm"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm text-text-primary">{ref.patientName || ref.staffName}</span>
+                      <span className="font-mono text-[0.7rem] text-text-muted mt-0.5">{ref.id}</span>
+                    </div>
+                    <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded whitespace-nowrap uppercase ${ref.status === 'TREATMENT_COMPLETED' || ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
+                        ? 'text-success bg-success-bg border border-success/10'
+                        : ref.status === 'INFO_REQUESTED'
                           ? 'text-warning bg-warning-bg border border-warning/10'
                           : ref.status === 'REJECTED'
-                          ? 'text-danger bg-danger-bg border border-danger/10'
-                          : 'text-text-secondary bg-bg-primary border border-border-color'
+                            ? 'text-danger bg-danger-bg border border-danger/10'
+                            : 'text-text-secondary bg-bg-primary border border-border-color'
                       }`}>
-                        {ref.status === 'TREATMENT_COMPLETED'
-                          ? 'Completed'
-                          : ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
+                      {ref.status === 'TREATMENT_COMPLETED'
+                        ? 'Completed'
+                        : ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
                           ? 'Approved'
                           : ref.status === 'INFO_REQUESTED'
-                          ? 'Pending Info'
-                          : ref.status === 'REJECTED'
-                          ? 'Rejected'
-                          : 'Reviewing'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                            ? 'Pending Info'
+                            : ref.status === 'REJECTED'
+                              ? 'Rejected'
+                              : 'Reviewing'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-col gap-1 border-t border-border-color pt-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-text-muted">Procedure Type:</span>
+                      <span className="text-text-secondary font-semibold">{resolveProcedureType(ref.diagnosisDescription)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-text-muted">Date Submitted:</span>
+                      <span className="text-text-secondary font-semibold">{formatDateString(ref.createdAt)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

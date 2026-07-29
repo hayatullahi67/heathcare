@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useReferral } from '../../context/ReferralContext';
-import { UserPlus, Building, Key, CheckCircle2, ShieldAlert, X } from 'lucide-react';
+import { UserPlus, Building, Key, CheckCircle2, ShieldAlert, X, Eye, EyeOff } from 'lucide-react';
 
 export const ManageUsers: React.FC = () => {
   const { registerStaff, registerHospital, users, hospitalsList } = useAuth();
@@ -71,13 +71,16 @@ export const ManageUsers: React.FC = () => {
   const [staffName, setStaffName] = useState('');
   const [staffEmail, setStaffEmail] = useState('');
   const [pensionId, setPensionId] = useState('');
-  const [department, setDepartment] = useState('');
+  const [staffPassword, setStaffPassword] = useState('');
+  const [showStaffPassword, setShowStaffPassword] = useState(false);
 
   // Hospital Form state
   const [hospName, setHospName] = useState('');
   const [hospEmail, setHospEmail] = useState('');
   const [location, setLocation] = useState('');
   const [contact, setContact] = useState('');
+  const [hospitalPassword, setHospitalPassword] = useState('');
+  const [showHospitalPassword, setShowHospitalPassword] = useState(false);
 
   // Status & Feedback states
   const [loading, setLoading] = useState(false);
@@ -91,22 +94,26 @@ export const ManageUsers: React.FC = () => {
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffName || !staffEmail || !pensionId || !department) {
+    if (!staffName || !staffEmail || !pensionId || !staffPassword) {
       setError('Please fill in all staff details.');
+      return;
+    }
+    if (staffPassword.length < 6) {
+      setError('Password must be at least 6 characters.');
       return;
     }
 
     setError(null);
     setSuccessData(null);
     setLoading(true);
-    const res = await registerStaff(staffName, staffEmail, pensionId, department);
+    const res = await registerStaff(staffName, staffEmail, pensionId, staffPassword);
     setLoading(false);
 
     if (res.success) {
       setSuccessData({
         role: 'STAFF',
         email: staffEmail.trim().toLowerCase(),
-        tempPass: 'staff123',
+        tempPass: staffPassword,
         msg: res.message
       });
       logActivity('REGISTER_USER', `Registered new retired staff member: ${staffName} (${staffEmail.trim().toLowerCase()}).`);
@@ -114,7 +121,7 @@ export const ManageUsers: React.FC = () => {
       setStaffName('');
       setStaffEmail('');
       setPensionId('');
-      setDepartment('');
+      setStaffPassword('');
     } else {
       setError(res.message);
     }
@@ -122,22 +129,26 @@ export const ManageUsers: React.FC = () => {
 
   const handleHospitalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hospName || !hospEmail || !location || !contact) {
+    if (!hospName || !hospEmail || !location || !contact || !hospitalPassword) {
       setError('Please fill in all hospital details.');
+      return;
+    }
+    if (hospitalPassword.length < 6) {
+      setError('Password must be at least 6 characters.');
       return;
     }
 
     setError(null);
     setSuccessData(null);
     setLoading(true);
-    const res = await registerHospital(hospName, hospEmail, location, contact);
+    const res = await registerHospital(hospName, hospEmail, location, contact, hospitalPassword);
     setLoading(false);
 
     if (res.success) {
       setSuccessData({
         role: 'HOSPITAL',
         email: hospEmail.trim().toLowerCase(),
-        tempPass: 'hospital123',
+        tempPass: hospitalPassword,
         msg: res.message
       });
       logActivity('REGISTER_USER', `Registered new network hospital partner: ${hospName} (${hospEmail.trim().toLowerCase()}).`);
@@ -146,6 +157,7 @@ export const ManageUsers: React.FC = () => {
       setHospEmail('');
       setLocation('');
       setContact('');
+      setHospitalPassword('');
     } else {
       setError(res.message);
     }
@@ -156,12 +168,12 @@ export const ManageUsers: React.FC = () => {
       {viewMode === 'LIST' ? (
         <>
           {/* Title & Register Header Row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4" style={{ marginBottom: '1rem' }}>
             <div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Registered Users Database</h2>
               <p className="text-muted" style={{ margin: '0.25rem 0 0 0', fontSize: '0.9rem' }}>Manage and audit system access for all clinical and administrative personnel.</p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
               {/* Quick Search bar */}
               <input
                 type="text"
@@ -171,8 +183,8 @@ export const ManageUsers: React.FC = () => {
                   setUserSearch(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="form-control"
-                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', width: '250px', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
+                className="form-control w-full sm:w-[250px]"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--bg-secondary)', color: 'var(--text-primary)' }}
               />
               <button
                 onClick={() => {
@@ -180,8 +192,8 @@ export const ManageUsers: React.FC = () => {
                   setError(null);
                   setSuccessData(null);
                 }}
-                className="btn btn-primary"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', padding: '0.55rem 1.25rem', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}
+                className="btn btn-primary w-full sm:w-auto whitespace-nowrap justify-center"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', borderRadius: '8px', padding: '0.55rem 1.25rem', fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer' }}
               >
                 <UserPlus size={16} />
                 <span>Register New User</span>
@@ -190,7 +202,7 @@ export const ManageUsers: React.FC = () => {
           </div>
 
           {/* Metrics Row */}
-          <div className="metrics-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.25rem', marginBottom: '0.5rem' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" style={{ gap: '1.25rem', marginBottom: '0.5rem' }}>
             {/* Metric 1 */}
             <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderRadius: '12px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -322,8 +334,8 @@ export const ManageUsers: React.FC = () => {
               </div>
             </div>
 
-            {/* Database Table Container */}
-            <div className="table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '0', backgroundColor: 'var(--bg-secondary)', borderTop: 'none', borderBottom: 'none' }}>
+            {/* Desktop Table View */}
+            <div className="hidden-mobile table-container" style={{ border: '1px solid var(--border-color)', borderRadius: '0', backgroundColor: 'var(--bg-secondary)', borderTop: 'none', borderBottom: 'none' }}>
               <table className="table" style={{ width: '100%', borderCollapse: 'collapse', margin: 0 }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)' }}>
@@ -435,6 +447,104 @@ export const ManageUsers: React.FC = () => {
               </table>
             </div>
 
+            {/* Mobile Card List View */}
+            <div className="visible-mobile flex flex-col gap-3 p-4 bg-bg-secondary border border-border-color border-t-none">
+              {paginatedUsers.length === 0 ? (
+                <div className="text-center p-6 text-text-muted text-sm border border-border-color rounded-lg bg-bg-secondary">
+                  No users found matching current filters.
+                </div>
+              ) : (
+                paginatedUsers.map(user => {
+                  let roleColor = '#64748b';
+                  let roleBg = '#f1f5f9';
+                  let roleLabel = user.role as string;
+                  let dotColor = '#94a3b8';
+
+                  if (user.role === 'SUPER_ADMIN') {
+                    roleColor = '#b91c1c';
+                    roleBg = '#fee2e2';
+                    roleLabel = 'Super Admin';
+                    dotColor = '#dc2626';
+                  } else if (user.role === 'RETIRED_STAFF') {
+                    roleColor = '#475569';
+                    roleBg = '#f1f5f9';
+                    roleLabel = 'Retired Staff';
+                    dotColor = '#94a3b8';
+                  } else if (user.role === 'HOSPITAL') {
+                    roleColor = '#0f766e';
+                    roleBg = '#ccfbf1';
+                    roleLabel = 'Hospital Partner';
+                    dotColor = '#0d9488';
+                  }
+
+                  return (
+                    <div key={user.id} className="bg-bg-primary border border-border-color rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-2.5">
+                          {getAvatar(user.name, user.role)}
+                          <div className="flex flex-col">
+                            <span className="font-bold text-sm text-text-primary">{user.name}</span>
+                            <span className="text-[0.7rem] text-text-secondary">{user.email}</span>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.5rem', borderRadius: '6px', color: roleColor, backgroundColor: roleBg, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span style={{ display: 'inline-block', width: '6px', height: '6px', backgroundColor: dotColor, borderRadius: '50%' }}></span>
+                          {roleLabel.toUpperCase()}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 border-t border-border-color pt-3 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-text-muted">User ID:</span>
+                          <span className="font-mono text-text-secondary">{formatUserId(user.id)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-text-muted">Username:</span>
+                          <span className="font-mono text-text-secondary">{user.email.split('@')[0]}</span>
+                        </div>
+                        {user.role === 'RETIRED_STAFF' && (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Pension ID:</span>
+                              <span className="text-text-secondary font-semibold">{user.pensionId}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Prior Dept:</span>
+                              <span className="text-text-secondary font-semibold">{user.department}</span>
+                            </div>
+                          </>
+                        )}
+                        {user.role === 'HOSPITAL' && (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Facility:</span>
+                              <span className="text-text-secondary font-semibold">{getHospitalName(user.hospitalId)}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Facility ID:</span>
+                              <span className="text-text-secondary font-semibold">{user.hospitalId || 'CGH-202'}</span>
+                            </div>
+                          </>
+                        )}
+                        {user.role === 'SUPER_ADMIN' && (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Role Title:</span>
+                              <span className="text-text-secondary font-semibold">Chief Medical Informatics</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Dept ID:</span>
+                              <span className="text-text-secondary font-semibold">MD-206</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
             {/* Database Table Footer */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', border: '1px solid var(--border-color)', borderTop: 'none', backgroundColor: 'var(--bg-secondary)', borderRadius: '0 0 12px 12px' }}>
               <div>
@@ -501,7 +611,7 @@ export const ManageUsers: React.FC = () => {
           </div>
 
           {/* Account Provisioning Card (rendered in-page) */}
-          <div className="card w-full" style={{ maxWidth: '650px', margin: '0 auto', backgroundColor: 'var(--bg-secondary)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-md)' }}>
+          <div className="card w-full responsive-form-card" style={{ maxWidth: '650px', margin: '0 auto', backgroundColor: 'var(--bg-secondary)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-md)' }}>
 
             {/* Form Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
@@ -673,23 +783,30 @@ export const ManageUsers: React.FC = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" htmlFor="dept-name">Department</label>
-                      <select
-                        id="dept-name"
-                        className="form-control"
-                        value={department}
-                        onChange={e => setDepartment(e.target.value)}
-                        disabled={loading}
-                        style={{ width: '100%' }}
-                      >
-                        <option value="">Select Dept...</option>
-                        <option value="Human Resources">Human Resources</option>
-                        <option value="Cardiology">Cardiology</option>
-                        <option value="Pediatrics">Pediatrics</option>
-                        <option value="General Medicine">General Medicine</option>
-                        <option value="Administration">Administration</option>
-                      </select>
+                      <label className="form-label" htmlFor="staff-password">Password</label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          id="staff-password"
+                          type={showStaffPassword ? 'text' : 'password'}
+                          minLength={6}
+                          className="form-control"
+                          placeholder="At least 6 characters"
+                          value={staffPassword}
+                          onChange={e => setStaffPassword(e.target.value)}
+                          disabled={loading}
+                          style={{ width: '100%', paddingRight: '2.75rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowStaffPassword(value => !value)}
+                          aria-label={showStaffPassword ? 'Hide password' : 'Show password'}
+                          style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: 0 }}
+                        >
+                          {showStaffPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                     </div>
+
                   </div>
 
                   {/* alert verification info */}
@@ -777,6 +894,31 @@ export const ManageUsers: React.FC = () => {
                         disabled={loading}
                         style={{ width: '100%' }}
                       />
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="hospital-password">Password</label>
+                      <div style={{ position: 'relative' }}>
+                        <input
+                          id="hospital-password"
+                          type={showHospitalPassword ? 'text' : 'password'}
+                          minLength={6}
+                          className="form-control"
+                          placeholder="At least 6 characters"
+                          value={hospitalPassword}
+                          onChange={e => setHospitalPassword(e.target.value)}
+                          disabled={loading}
+                          style={{ width: '100%', paddingRight: '2.75rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowHospitalPassword(value => !value)}
+                          aria-label={showHospitalPassword ? 'Hide password' : 'Show password'}
+                          style={{ position: 'absolute', right: '0.7rem', top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', padding: 0 }}
+                        >
+                          {showHospitalPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -951,6 +1093,27 @@ export const ManageUsers: React.FC = () => {
 
         .toggle-tab-btn {
           outline: none !important;
+        }
+
+        @media (max-width: 991px) {
+          .manage-users > div:first-child {
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .manage-users > div:first-child > div:last-child {
+            width: 100% !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+          }
+          .manage-users > div:first-child > div:last-child input {
+            width: 100% !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .responsive-form-card {
+            padding: 1.25rem !important;
+          }
         }
 
         @keyframes modalFadeIn {

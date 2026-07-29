@@ -8,13 +8,12 @@ import {
   Play,
   ArrowLeft,
   Building,
-  User,
-  Heart
+  User
 } from 'lucide-react';
 
 export const NewRequest: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, hospitalsList } = useAuth();
   const { createReferral } = useReferral();
 
   if (!currentUser) return null;
@@ -35,7 +34,6 @@ export const NewRequest: React.FC = () => {
   const [departmentAtExit, setDepartmentAtExit] = useState('');
   const [branchCenter] = useState('Lafia');
   const [residentialAddress, setResidentialAddress] = useState('');
-  const [isSigned, setIsSigned] = useState(false);
 
   // Dynamic placeholders for fallback submission values
   const patientNamePlaceholder = patientRelationship === 'Self' ? (currentUser.name || '') : '';
@@ -47,14 +45,9 @@ export const NewRequest: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Helper to map typed hospital name to one of the registered partner IDs
-  const matchHospitalId = (name: string): string => {
-    const n = name.toLowerCase();
-    if (n.includes('city') || n.includes('general')) return 'hosp-1';
-    if (n.includes('metro')) return 'hosp-2';
-    if (n.includes('jude') || n.includes('cardiac') || n.includes('st.')) return 'hosp-3';
-    return 'hosp-1'; // Default fallback hospital so the referral is always visible to a partner
-  };
+  const selectedHospital = hospitalsList.find(
+    hospital => hospital.name.trim().toLowerCase() === hospitalName.trim().toLowerCase()
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,11 +58,11 @@ export const NewRequest: React.FC = () => {
     const finalDepartmentAtExit = departmentAtExit.trim() || departmentPlaceholder;
 
     if (!hospitalName.trim()) {
-      setError('Please enter Name of Hospital / Clinic.');
+      setError('Please enter the name of the hospital or clinic.');
       return;
     }
     if (!hospitalLocation.trim()) {
-      setError('Please enter Location of Hospital / Clinic.');
+      setError('Please enter the location of the hospital or clinic.');
       return;
     }
     if (!finalPatientName) {
@@ -88,11 +81,6 @@ export const NewRequest: React.FC = () => {
       setError('Please enter contact telephone number.');
       return;
     }
-    if (!isSigned) {
-      setError('Patient or Retiree signature consent confirmation is required.');
-      return;
-    }
-
     setError(null);
     setLoading(true);
 
@@ -105,19 +93,17 @@ export const NewRequest: React.FC = () => {
       telephoneNumber,
       departmentAtExit: finalDepartmentAtExit,
       branchCenter,
-      residentialAddress,
-      isSigned
+      residentialAddress
     };
 
-    const customHospitalId = matchHospitalId(hospitalName);
-    const fullHospitalName = `${hospitalName.trim()} (${hospitalLocation.trim()})`;
-
     // Construct description dynamically to satisfy system schemas
-    const generatedDescription = `Official CBN Medical Referral Request for patient ${finalPatientName} (${patientRelationship}, Age: ${patientAge}, Sex: ${patientSex}). Beneficiary Branch Currency Center: ${branchCenter}. Status at Exit: ${statusAtExit || 'N/A'}, Department: ${finalDepartmentAtExit || 'N/A'}. Assigned Facility: ${hospitalName.trim()} (Location: ${hospitalLocation.trim()}). Residential Address: ${residentialAddress || 'N/A'}.`;
+    const enteredHospitalName = hospitalName.trim();
+    const referralHospitalId = selectedHospital?.id || `external-${Date.now()}`;
+    const generatedDescription = `Official CBN Medical Referral Request for patient ${finalPatientName} (${patientRelationship}, Age: ${patientAge}, Sex: ${patientSex}). Beneficiary Branch Currency Center: ${branchCenter}. Status at Exit: ${statusAtExit || 'N/A'}, Department: ${finalDepartmentAtExit || 'N/A'}. Assigned Facility: ${enteredHospitalName} (Location: ${hospitalLocation.trim()}). Residential Address: ${residentialAddress || 'N/A'}.`;
 
     const res = await createReferral(
-      customHospitalId,
-      fullHospitalName,
+      referralHospitalId,
+      enteredHospitalName,
       generatedDescription,
       'ROUTINE', // Default urgency
       [],        // No attachments
@@ -200,12 +186,18 @@ export const NewRequest: React.FC = () => {
                   <input
                     id="hospital-name"
                     type="text"
+                    list="registered-hospitals"
                     className="bg-bg-primary text-text-primary border border-border-color rounded-lg px-3 py-2 text-sm outline-none focus:border-primary w-full transition-all"
-                    placeholder="e.g. City General Hospital"
+                    placeholder="Enter registered hospital name"
                     value={hospitalName}
                     onChange={e => setHospitalName(e.target.value)}
                     disabled={loading}
                   />
+                  <datalist id="registered-hospitals">
+                    {hospitalsList.map(hospital => (
+                      <option key={hospital.id} value={hospital.name} />
+                    ))}
+                  </datalist>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -369,28 +361,6 @@ export const NewRequest: React.FC = () => {
                     style={{ minHeight: '80px' }}
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Part 3: Signature Consent */}
-            <div className="flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary border-b border-border-color pb-2 m-0 flex items-center gap-2">
-                <Heart size={16} className="text-primary" />
-                <span>Retiree / Pensioner / Patient Signature Consent</span>
-              </h3>
-
-              <div className="bg-bg-primary border border-border-color rounded-xl p-4 flex gap-3 items-start shadow-sm">
-                <input 
-                  type="checkbox"
-                  id="signature-consent"
-                  checked={isSigned}
-                  onChange={(e) => setIsSigned(e.target.checked)}
-                  disabled={loading}
-                  className="w-5 h-5 rounded border-border-color text-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
-                />
-                <label htmlFor="signature-consent" className="text-xs text-text-secondary cursor-pointer leading-relaxed user-select-none font-medium">
-                  I, <strong>{patientName || patientNamePlaceholder || '[Patient Name]'}</strong>, hereby append my digital signature confirming that the information supplied in this Retiree/Pensioner Medical Referral Form is complete and authentic, and authorize the assigned medical facility to verify my treatment credentials.
-                </label>
               </div>
             </div>
 

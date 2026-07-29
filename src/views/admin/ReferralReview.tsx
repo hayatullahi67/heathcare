@@ -210,8 +210,8 @@ export const ReferralReview: React.FC = () => {
               </span>
             </div>
 
-            {/* Database Table Container */}
-            <div className="block w-full overflow-x-auto -webkit-overflow-scrolling-touch border border-border-color bg-bg-secondary rounded-b-xl">
+            {/* Desktop Table View */}
+            <div className="hidden-mobile block w-full overflow-x-auto -webkit-overflow-scrolling-touch border border-border-color bg-bg-secondary rounded-b-xl">
               <table className="w-full border-collapse m-0 min-w-[950px]">
                 <thead>
                   <tr className="border-b border-border-color bg-bg-primary">
@@ -273,6 +273,54 @@ export const ReferralReview: React.FC = () => {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card List View */}
+            <div className="visible-mobile flex flex-col gap-3 p-4 bg-bg-secondary border border-border-color border-t-none rounded-b-xl">
+              {filteredReferrals.length === 0 ? (
+                <div className="text-center p-6 text-text-muted text-sm border border-border-color rounded-lg bg-bg-secondary">
+                  No referrals found matching current filters.
+                </div>
+              ) : (
+                filteredReferrals.map(ref => (
+                  <div key={ref.id} className="bg-bg-primary border border-border-color rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-sm text-text-primary">{ref.patientName || ref.staffName}</span>
+                        <span className="text-[0.7rem] text-text-muted mt-0.5 font-mono">Pension ID: {ref.pensionId || 'N/A'}</span>
+                      </div>
+                      <Badge status={ref.status} />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 border-t border-border-color pt-2.5 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-text-muted">Clinic Partner:</span>
+                        <span className="text-text-secondary font-semibold text-right max-w-[200px] truncate">{ref.hospitalName}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-text-muted">Urgency:</span>
+                        <span className="text-text-secondary font-bold uppercase">{ref.urgencyLevel}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-text-muted">Submitted:</span>
+                        <span className="text-text-secondary font-semibold">
+                          {new Date(ref.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSelectedId(ref.id);
+                        setViewMode('DETAIL');
+                      }}
+                      className="px-3 py-2 rounded bg-primary hover:bg-primary-hover text-white font-bold text-xs transition-all cursor-pointer text-center w-full mt-1.5"
+                    >
+                      Review Case File
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </>
@@ -604,7 +652,7 @@ export const ReferralReview: React.FC = () => {
               </button>
             </div>
 
-            <div className="overflow-y-auto max-h-[calc(100vh-180px)] p-6 sm:p-10 bg-white text-slate-800 rounded-b-xl">
+            <div className="overflow-y-auto max-h-[calc(100vh-180px)] p-6 sm:p-10 bg-white text-slate-800 rounded-b-xl responsive-paper-body">
               {/* Paper Form Title */}
               <div className="text-center border-b-2 border-double border-slate-600 pb-5 mb-6">
                 <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 tracking-wider m-0">CENTRAL BANK OF NIGERIA</h2>
@@ -731,8 +779,8 @@ export const ReferralReview: React.FC = () => {
                   <div className="border border-slate-300 rounded p-5 bg-white">
                     <h4 className="text-xs font-extrabold text-slate-900 uppercase -mx-5 -mt-5 mb-5 px-5 py-2.5 bg-slate-100 border-b border-slate-300 rounded-t">(D) MEDICAL BILL / INVOICE SUMMARY</h4>
 
-                    <div className="border border-slate-300 rounded overflow-hidden">
-                      <table className="w-full border-collapse">
+                    <div className="billing-table-wrapper" style={{ border: '1px solid #cbd5e1', borderRadius: '4px' }}>
+                      <table className="w-full border-collapse min-w-[500px]">
                         <thead>
                           <tr className="bg-slate-100">
                             <th className="w-16 text-center text-[0.65rem] font-bold text-slate-600 py-2 px-3 border-b-2 border-slate-300 uppercase">S/NO</th>

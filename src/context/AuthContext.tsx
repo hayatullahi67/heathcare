@@ -9,8 +9,8 @@ interface AuthContextType {
   users: User[];
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
-  registerStaff: (name: string, email: string, pensionId: string, department: string) => Promise<{ success: boolean; message: string }>;
-  registerHospital: (name: string, email: string, location: string, contactNumber: string) => Promise<{ success: boolean; hospital: Hospital; message: string }>;
+  registerStaff: (name: string, email: string, pensionId: string, password: string) => Promise<{ success: boolean; message: string }>;
+  registerHospital: (name: string, email: string, location: string, contactNumber: string, password: string) => Promise<{ success: boolean; hospital: Hospital; message: string }>;
   hospitalsList: Hospital[];
 }
 
@@ -101,51 +101,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  // Firestore hospital profiles list binding
+  // Firestore hospital profiles list binding. Hospitals are created by admins.
   useEffect(() => {
-    const defaultHospitals: Hospital[] = [
-      {
-        id: 'hosp-1',
-        name: 'City General Hospital',
-        location: '100 Medical Plaza, Downtown',
-        contactNumber: '+1 (555) 019-2834',
-        email: 'city@hospital.org'
-      },
-      {
-        id: 'hosp-2',
-        name: 'Metro Medical Center',
-        location: '456 Parkway Blvd, Northside',
-        contactNumber: '+1 (555) 014-9988',
-        email: 'metro@hospital.org'
-      },
-      {
-        id: 'hosp-3',
-        name: 'St. Jude Cardiac Clinic',
-        location: '789 Wellness Way, East District',
-        contactNumber: '+1 (555) 017-4411',
-        email: 'jude@hospital.org'
-      }
-    ];
-
-    const unsubscribe = onSnapshot(collection(db, 'hospitals'), async (snapshot) => {
-      if (snapshot.empty) {
-        try {
-          const batch = writeBatch(db);
-          defaultHospitals.forEach(hosp => {
-            const docRef = doc(db, 'hospitals', hosp.id);
-            batch.set(docRef, hosp);
-          });
-          await batch.commit();
-        } catch (err) {
-          console.error("Error seeding initial hospitals to Firestore:", err);
-        }
-      } else {
-        const list: Hospital[] = [];
-        snapshot.forEach(doc => {
-          list.push(doc.data() as Hospital);
-        });
-        setHospitalsList(list);
-      }
+    const unsubscribe = onSnapshot(collection(db, 'hospitals'), (snapshot) => {
+      const list: Hospital[] = [];
+      snapshot.forEach(doc => {
+        list.push(doc.data() as Hospital);
+      });
+      setHospitalsList(list);
     }, (err) => {
       console.error("Error syncing hospitals from Firestore:", err);
     });
@@ -158,17 +121,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const cleanEmail = email.trim().toLowerCase();
     
-    // NOTE: Commented out Firestore database query for login credentials
-    // and replaced with direct validation against hardcoded mock data.
-    // This allows login via predefined personas even if Firestore is not synced.
-    // const user = users.find(u => u.email.toLowerCase() === cleanEmail);
-    const user = INITIAL_USERS.find(u => u.email.toLowerCase() === cleanEmail);
+    const user = users.find(u => u.email.toLowerCase() === cleanEmail);
     if (!user) {
       return { success: false, message: 'Invalid credentials. User not found.' };
     }
 
-    // const savedPassword = passwords[cleanEmail];
-    const savedPassword = USER_PASSWORDS[cleanEmail];
+    const savedPassword = passwords[cleanEmail];
     if (savedPassword !== password) {
       return { success: false, message: 'Invalid credentials. Password incorrect.' };
     }
@@ -185,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string,
     email: string,
     pensionId: string,
-    department: string
+    password: string
   ): Promise<{ success: boolean; message: string }> => {
     await new Promise((resolve) => setTimeout(resolve, 800));
 
@@ -199,14 +157,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: cleanEmail,
       name,
       role: 'RETIRED_STAFF',
-      pensionId,
-      department
+      pensionId
     };
 
     try {
       await setDoc(doc(db, 'users', newStaff.id), newStaff);
-      await setDoc(doc(db, 'passwords', cleanEmail), { email: cleanEmail, password: 'staff123' });
-      return { success: true, message: 'Staff registered successfully. Password: staff123' };
+      await setDoc(doc(db, 'passwords', cleanEmail), { email: cleanEmail, password });
+      return { success: true, message: 'Staff registered successfully.' };
     } catch (err) {
       console.error("Error registering staff in Firestore:", err);
       return { success: false, message: 'Failed to write new user data to database.' };
@@ -217,7 +174,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string,
     email: string,
     location: string,
-    contactNumber: string
+    contactNumber: string,
+    password: string
   ): Promise<{ success: boolean; hospital: Hospital; message: string }> => {
     await new Promise((resolve) => setTimeout(resolve, 800));
 
@@ -246,12 +204,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await setDoc(doc(db, 'hospitals', hospitalId), newHospital);
       await setDoc(doc(db, 'users', newHospitalUser.id), newHospitalUser);
-      await setDoc(doc(db, 'passwords', cleanEmail), { email: cleanEmail, password: 'hospital123' });
+      await setDoc(doc(db, 'passwords', cleanEmail), { email: cleanEmail, password });
 
       return {
         success: true,
         hospital: newHospital,
-        message: `Hospital registered successfully. User Login: ${cleanEmail}, Password: hospital123`
+        message: `Hospital registered successfully. User Login: ${cleanEmail}`
       };
     } catch (err) {
       console.error("Error registering hospital in Firestore:", err);

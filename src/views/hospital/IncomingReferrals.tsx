@@ -116,7 +116,7 @@ export const IncomingReferrals: React.FC = () => {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
           <div className="relative w-full sm:w-[150px]">
             <select
               value={urgencyFilter}
@@ -159,7 +159,8 @@ export const IncomingReferrals: React.FC = () => {
         </div>
       ) : (
         <div className="bg-bg-secondary border border-border-color rounded-xl overflow-hidden shadow-sm">
-          <div className="block w-full overflow-x-auto -webkit-overflow-scrolling-touch">
+          {/* Desktop Table View */}
+          <div className="hidden-mobile block w-full overflow-x-auto -webkit-overflow-scrolling-touch">
             <table className="w-full border-collapse m-0 min-w-[900px]">
               <thead>
                 <tr className="border-b border-border-color bg-bg-primary/50 text-text-muted text-xs">
@@ -234,6 +235,69 @@ export const IncomingReferrals: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="visible-mobile flex flex-col gap-3 p-4 bg-bg-secondary border-t border-border-color">
+            {filteredIncoming.map(ref => (
+              <div key={ref.id} className="bg-bg-primary border border-border-color rounded-xl p-4 flex flex-col gap-3 shadow-sm animate-fade-in">
+                <div className="flex justify-between items-start">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm text-text-primary">{ref.patientName || ref.staffName}</span>
+                    <span className="text-[0.7rem] text-text-muted mt-0.5">Relationship: {ref.patientRelationship || 'Self'}</span>
+                  </div>
+                  <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded border uppercase whitespace-nowrap inline-block ${
+                    ref.urgencyLevel === 'EMERGENCY'
+                      ? 'text-danger bg-danger-bg border-danger/10'
+                      : ref.urgencyLevel === 'URGENT'
+                      ? 'text-warning bg-warning-bg border-warning/10'
+                      : 'text-text-secondary bg-bg-primary border-border-color'
+                  }`}>
+                    {ref.urgencyLevel}
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-1.5 border-t border-border-color pt-2.5 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-text-muted">Pension ID:</span>
+                    <span className="font-mono text-text-secondary font-semibold">{ref.pensionId || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text-muted">Age / Sex:</span>
+                    <span className="text-text-secondary font-semibold">{ref.patientAge ? `${ref.patientAge} Yrs / ${ref.patientSex}` : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text-muted">Branch:</span>
+                    <span className="text-text-secondary font-semibold">{ref.branchCenter || 'Lafia'}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-text-muted">Received:</span>
+                    <span className="text-text-secondary font-semibold">
+                      {new Date(ref.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 border-t border-border-color pt-2.5 mt-1">
+                  <button
+                    onClick={() => setSelectedRef(ref)}
+                    className="text-xs font-bold px-3 py-2 border border-border-color bg-bg-primary text-text-primary hover:bg-bg-secondary rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5 flex-1"
+                  >
+                    <Eye size={12} />
+                    <span>Details</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate('/hospital/patient-care');
+                    }}
+                    className="text-xs font-bold px-3 py-2 bg-primary hover:bg-primary-hover text-white rounded-lg transition-colors cursor-pointer shadow-sm flex items-center justify-center gap-1.5 flex-1"
+                  >
+                    <CheckCircle2 size={12} />
+                    <span>Treat</span>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -125,66 +125,108 @@ export const Overview: React.FC = () => {
           </div>
         </div>
 
-        <div className="block w-full overflow-x-auto -webkit-overflow-scrolling-touch border border-border-color rounded-lg max-h-[350px]">
-          {filteredLogs.length === 0 ? (
-            <div className="text-center p-6 text-text-muted text-sm">No audit logs matching filters found.</div>
-          ) : (
-            <table className="w-full border-collapse m-0 min-w-[800px]">
-              <thead className="sticky top-0 bg-bg-secondary z-1 shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
-                <tr className="border-b border-border-color text-text-muted text-xs">
-                  <th className="text-left p-3 font-bold uppercase">Timestamp</th>
-                  <th className="text-left p-3 font-bold uppercase">Operator</th>
-                  <th className="text-left p-3 font-bold uppercase">Action</th>
-                  <th className="text-left p-3 font-bold uppercase">Details</th>
-                  <th className="text-left p-3 font-bold uppercase">IP Address</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map(log => {
-                  let badgeColor = 'text-text-secondary bg-bg-primary border-border-color';
-                  if (log.action === 'USER_LOGIN' || log.action === 'APPROVE_REFERRAL' || log.action === 'COMPLETE_TREATMENT') {
-                    badgeColor = 'text-success bg-success-bg border-success/10';
-                  } else if (log.action === 'REJECT_REFERRAL' || log.action === 'DECLINE_REFERRAL') {
-                    badgeColor = 'text-danger bg-danger-bg border-danger/10';
-                  } else if (log.action === 'REQUEST_MORE_INFO') {
-                    badgeColor = 'text-warning bg-warning-bg border-warning/10';
-                  } else if (log.action === 'REGISTER_USER' || log.action === 'SUBMIT_REFERRAL') {
-                    badgeColor = 'text-[#0369a1] bg-[#e0f2fe] border-[#0369a1]/10';
-                  } else if (log.action === 'ACCEPT_REFERRAL' || log.action === 'ADD_PROGRESS_NOTE' || log.action === 'UPDATE_VITALS') {
-                    badgeColor = 'text-[#6d28d9] bg-[#f3e8ff] border-[#6d28d9]/10';
-                  }
+        {filteredLogs.length === 0 ? (
+          <div className="text-center p-6 text-text-muted text-sm border border-border-color rounded-lg bg-bg-secondary">No audit logs matching filters found.</div>
+        ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden-mobile block w-full overflow-x-auto -webkit-overflow-scrolling-touch border border-border-color rounded-lg max-h-[350px]">
+              <table className="w-full border-collapse m-0 min-w-[800px]">
+                <thead className="sticky top-0 bg-bg-secondary z-1 shadow-[0_1px_0_0_rgba(0,0,0,0.1)]">
+                  <tr className="border-b border-border-color text-text-muted text-xs">
+                    <th className="text-left p-3 font-bold uppercase">Timestamp</th>
+                    <th className="text-left p-3 font-bold uppercase">Operator</th>
+                    <th className="text-left p-3 font-bold uppercase">Action</th>
+                    <th className="text-left p-3 font-bold uppercase">Details</th>
+                    <th className="text-left p-3 font-bold uppercase">IP Address</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLogs.map(log => {
+                    let badgeColor = 'text-text-secondary bg-bg-primary border-border-color';
+                    if (log.action === 'USER_LOGIN' || log.action === 'APPROVE_REFERRAL' || log.action === 'COMPLETE_TREATMENT') {
+                      badgeColor = 'text-success bg-success-bg border-success/10';
+                    } else if (log.action === 'REJECT_REFERRAL' || log.action === 'DECLINE_REFERRAL') {
+                      badgeColor = 'text-danger bg-danger-bg border-danger/10';
+                    } else if (log.action === 'REQUEST_MORE_INFO') {
+                      badgeColor = 'text-warning bg-warning-bg border-warning/10';
+                    } else if (log.action === 'REGISTER_USER' || log.action === 'SUBMIT_REFERRAL') {
+                      badgeColor = 'text-[#0369a1] bg-[#e0f2fe] border-[#0369a1]/10';
+                    } else if (log.action === 'ACCEPT_REFERRAL' || log.action === 'ADD_PROGRESS_NOTE' || log.action === 'UPDATE_VITALS') {
+                      badgeColor = 'text-[#6d28d9] bg-[#f3e8ff] border-[#6d28d9]/10';
+                    }
 
-                  return (
-                    <tr key={log.id} className="border-b border-border-color last:border-none hover:bg-bg-primary/30 transition-colors">
-                      <td className="p-3 text-[0.825rem] text-text-secondary whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString()}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-[0.85rem] text-text-primary">{log.userName}</span>
-                          <span className="text-[0.7rem] text-text-muted">
-                            {log.userRole === 'SUPER_ADMIN' ? 'Administrator' : log.userRole === 'RETIRED_STAFF' ? 'Retired Staff' : 'Network Clinic'}
+                    return (
+                      <tr key={log.id} className="border-b border-border-color last:border-none hover:bg-bg-primary/30 transition-colors">
+                        <td className="p-3 text-[0.825rem] text-text-secondary whitespace-nowrap">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[0.85rem] text-text-primary">{log.userName}</span>
+                            <span className="text-[0.7rem] text-text-muted">
+                              {log.userRole === 'SUPER_ADMIN' ? 'Administrator' : log.userRole === 'RETIRED_STAFF' ? 'Retired Staff' : 'Network Clinic'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded border uppercase whitespace-nowrap inline-block ${badgeColor}`}>
+                            {log.action.replace(/_/g, ' ')}
                           </span>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded border uppercase whitespace-nowrap inline-block ${badgeColor}`}>
-                          {log.action.replace(/_/g, ' ')}
+                        </td>
+                        <td className="p-3 text-[0.85rem] text-text-secondary max-w-[400px] leading-relaxed break-words">
+                          {log.details}
+                        </td>
+                        <td className="p-3 text-[0.8rem] font-mono text-text-secondary">
+                          {log.ipAddress || '127.0.0.1'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card List View */}
+            <div className="visible-mobile flex flex-col gap-3 max-h-[450px] overflow-y-auto pr-1">
+              {filteredLogs.map(log => {
+                let badgeColor = 'text-text-secondary bg-bg-primary border-border-color';
+                if (log.action === 'USER_LOGIN' || log.action === 'APPROVE_REFERRAL' || log.action === 'COMPLETE_TREATMENT') {
+                  badgeColor = 'text-success bg-success-bg border-success/10';
+                } else if (log.action === 'REJECT_REFERRAL' || log.action === 'DECLINE_REFERRAL') {
+                  badgeColor = 'text-danger bg-danger-bg border-danger/10';
+                } else if (log.action === 'REQUEST_MORE_INFO') {
+                  badgeColor = 'text-warning bg-warning-bg border-warning/10';
+                } else if (log.action === 'REGISTER_USER' || log.action === 'SUBMIT_REFERRAL') {
+                  badgeColor = 'text-[#0369a1] bg-[#e0f2fe] border-[#0369a1]/10';
+                } else if (log.action === 'ACCEPT_REFERRAL' || log.action === 'ADD_PROGRESS_NOTE' || log.action === 'UPDATE_VITALS') {
+                  badgeColor = 'text-[#6d28d9] bg-[#f3e8ff] border-[#6d28d9]/10';
+                }
+
+                return (
+                  <div key={log.id} className="bg-bg-primary border border-border-color rounded-xl p-4 flex flex-col gap-2.5 shadow-sm">
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-sm text-text-primary">{log.userName}</span>
+                        <span className="text-[0.7rem] text-text-muted mt-0.5">
+                          {log.userRole === 'SUPER_ADMIN' ? 'Administrator' : log.userRole === 'RETIRED_STAFF' ? 'Retired Staff' : 'Network Clinic'}
                         </span>
-                      </td>
-                      <td className="p-3 text-[0.85rem] text-text-secondary max-w-[400px] leading-relaxed break-words">
-                        {log.details}
-                      </td>
-                      <td className="p-3 text-[0.8rem] font-mono text-text-secondary">
-                        {log.ipAddress || '127.0.0.1'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+                      </div>
+                      <span className="text-[0.7rem] text-text-muted font-medium">{new Date(log.timestamp).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div className="flex flex-wrap justify-between items-center gap-2 border-t border-border-color pt-2 mt-1">
+                      <span className={`text-[0.65rem] font-bold px-2 py-0.5 rounded border uppercase whitespace-nowrap inline-block ${badgeColor}`}>
+                        {log.action.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-[0.7rem] font-mono text-text-secondary">{log.ipAddress || '127.0.0.1'}</span>
+                    </div>
+                    <p className="text-xs text-text-secondary m-0 mt-1.5 break-words leading-relaxed">{log.details}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
     </div>

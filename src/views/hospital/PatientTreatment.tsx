@@ -612,7 +612,7 @@ export const PatientTreatment: React.FC = () => {
               </div>
 
               {/* Input Grid 1 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '1.25rem', marginBottom: '1.5rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
                     HOSPITAL/CLINIC NAME
@@ -643,7 +643,7 @@ export const PatientTreatment: React.FC = () => {
               </div>
 
               {/* Input Grid 2 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem', marginBottom: '1.5rem' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: '1.25rem', marginBottom: '1.5rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
                     PATIENT TYPE
@@ -686,7 +686,7 @@ export const PatientTreatment: React.FC = () => {
               </div>
 
               {/* Input Grid 3 */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '1.25rem', marginBottom: '2rem' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: '1.25rem', marginBottom: '2rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
                     ATTENDING DOCTOR
@@ -735,7 +735,7 @@ export const PatientTreatment: React.FC = () => {
                   Medical Observations
                 </h3>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '1.25rem', marginBottom: '1.25rem' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '0.725rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.4rem' }}>
                       DIAGNOSIS
@@ -944,7 +944,7 @@ export const PatientTreatment: React.FC = () => {
 
               {/* Certification & Signatures Section */}
               <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '2rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', textAlign: 'center' }}>
+                <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '3rem', textAlign: 'center' }}>
                   
                   {/* Doctor Signature */}
                   <div>
@@ -1144,20 +1144,177 @@ export const PatientTreatment: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="table-container card" style={{ padding: 0, overflow: 'hidden' }}>
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden-mobile table-container card" style={{ padding: 0, overflow: 'hidden' }}>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Patient Details</th>
+                        <th>Pension ID No.</th>
+                        <th>Urgency</th>
+                        <th>Key Vitals Status</th>
+                        <th>Admitted Date</th>
+                        <th style={{ textAlign: 'right' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredActive.map(ref => (
+                        <tr key={ref.id} className="treatment-table-row">
+                          <td>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                              <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                {ref.patientName || ref.staffName}
+                              </span>
+                              <span className="text-muted" style={{ fontSize: '0.725rem' }}>
+                                Relationship: {ref.patientRelationship || 'Self'}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="font-mono text-sm font-semibold">{ref.pensionId || 'N/A'}</span>
+                          </td>
+                          <td>
+                            <span className={`badge ${ref.urgencyLevel === 'EMERGENCY'
+                                ? 'badge-danger'
+                                : ref.urgencyLevel === 'URGENT'
+                                  ? 'badge-warning'
+                                  : 'badge-secondary'
+                              }`} style={{ fontSize: '0.7rem' }}>
+                              {ref.urgencyLevel}
+                            </span>
+                          </td>
+                          <td>
+                            {ref.vitals ? (
+                              <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
+                                <span style={{ fontWeight: 600 }}>BP: {ref.vitals.bloodPressure || '--'}</span>
+                                <span className="text-muted">|</span>
+                                <span style={{ fontWeight: 600 }}>HR: {ref.vitals.pulseRate || '--'} bpm</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted text-xs">No Vitals Recorded</span>
+                            )}
+                          </td>
+                          <td>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                              {new Date(ref.updatedAt).toLocaleDateString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                              <button
+                                onClick={() => handleOpenManageCare(ref)}
+                                className="btn btn-secondary btn-sm flex align-center justify-center gap-1"
+                                style={{ padding: '0.4rem 0.7rem', fontSize: '0.75rem' }}
+                              >
+                                <Activity size={12} />
+                                <span>Manage Care</span>
+                              </button>
+                              <button
+                                onClick={() => handleOpenForm(ref)}
+                                className="btn btn-primary btn-sm flex align-center justify-center gap-1"
+                                style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
+                              >
+                                <FileCheck size={12} />
+                                <span>Discharge Form</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card List View */}
+                <div className="visible-mobile flex flex-col gap-3">
+                  {filteredActive.map(ref => (
+                    <div key={ref.id} className="bg-bg-secondary border border-border-color rounded-xl p-4 flex flex-col gap-3 shadow-sm animate-fade-in">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-text-primary">{ref.patientName || ref.staffName}</span>
+                          <span className="text-[0.7rem] text-text-muted mt-0.5">Relationship: {ref.patientRelationship || 'Self'}</span>
+                        </div>
+                        <span className={`badge ${ref.urgencyLevel === 'EMERGENCY'
+                            ? 'badge-danger'
+                            : ref.urgencyLevel === 'URGENT'
+                              ? 'badge-warning'
+                              : 'badge-secondary'
+                          }`} style={{ fontSize: '0.65rem' }}>
+                          {ref.urgencyLevel}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col gap-1.5 border-t border-border-color pt-2.5 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-text-muted">Pension ID:</span>
+                          <span className="font-mono text-text-secondary font-semibold">{ref.pensionId || 'N/A'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-text-muted">Admitted:</span>
+                          <span className="text-text-secondary font-semibold">
+                            {new Date(ref.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-text-muted">Vitals BP/HR:</span>
+                          {ref.vitals ? (
+                            <span className="text-text-primary font-semibold">BP {ref.vitals.bloodPressure || '--'} | HR {ref.vitals.pulseRate || '--'} bpm</span>
+                          ) : (
+                            <span className="text-text-muted">None Recorded</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 border-t border-border-color pt-2.5 mt-1">
+                        <button
+                          onClick={() => handleOpenManageCare(ref)}
+                          className="btn btn-secondary btn-sm flex align-center justify-center gap-1.5 flex-1 font-bold py-2 text-xs"
+                        >
+                          <Activity size={12} />
+                          <span>Manage Vitals</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenForm(ref)}
+                          className="btn btn-primary btn-sm flex align-center justify-center gap-1.5 flex-1 font-bold py-2 text-xs"
+                        >
+                          <FileCheck size={12} />
+                          <span>Discharge</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )
+          ) : filteredDischarged.length === 0 ? (
+            <div className="card text-center p-8">
+              <CheckCircle size={40} className="text-muted m-b-4" />
+              <h4 className="font-semibold">No Discharged Records Found</h4>
+              <p className="text-muted text-sm">You have not completed any treatments matching these filters.</p>
+            </div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden-mobile table-container card" style={{ padding: 0, overflow: 'hidden' }}>
                 <table className="table">
                   <thead>
                     <tr>
                       <th>Patient Details</th>
                       <th>Pension ID No.</th>
-                      <th>Urgency</th>
-                      <th>Key Vitals Status</th>
-                      <th>Admitted Date</th>
+                      <th>Confirmed Diagnosis</th>
+                      <th>Discharging Physician</th>
+                      <th>Total Invoiced</th>
+                      <th>Discharge Date</th>
                       <th style={{ textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredActive.map(ref => (
+                    {filteredDischarged.map(ref => (
                       <tr key={ref.id} className="treatment-table-row">
                         <td>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
@@ -1173,52 +1330,37 @@ export const PatientTreatment: React.FC = () => {
                           <span className="font-mono text-sm font-semibold">{ref.pensionId || 'N/A'}</span>
                         </td>
                         <td>
-                          <span className={`badge ${ref.urgencyLevel === 'EMERGENCY'
-                              ? 'badge-danger'
-                              : ref.urgencyLevel === 'URGENT'
-                                ? 'badge-warning'
-                                : 'badge-secondary'
-                            }`} style={{ fontSize: '0.7rem' }}>
-                            {ref.urgencyLevel}
+                          <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                            {ref.treatmentReport?.diagnosisConfirmed || 'N/A'}
                           </span>
                         </td>
                         <td>
-                          {ref.vitals ? (
-                            <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem' }}>
-                              <span style={{ fontWeight: 600 }}>BP: {ref.vitals.bloodPressure || '--'}</span>
-                              <span className="text-muted">|</span>
-                              <span style={{ fontWeight: 600 }}>HR: {ref.vitals.pulseRate || '--'} bpm</span>
-                            </div>
-                          ) : (
-                            <span className="text-muted text-xs">No Vitals Recorded</span>
-                          )}
+                          <span style={{ fontSize: '0.85rem' }}>{ref.treatmentReport?.physicianName || 'N/A'}</span>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700 }} className="text-success">
+                            ₦{ref.treatmentReport?.billingTotal?.toLocaleString() || '0'}
+                          </span>
                         </td>
                         <td>
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                            {new Date(ref.updatedAt).toLocaleDateString([], {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
+                            {ref.treatmentReport &&
+                              new Date(ref.treatmentReport.completedAt).toLocaleDateString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
                           </span>
                         </td>
                         <td>
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem' }}>
+                          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                             <button
-                              onClick={() => handleOpenManageCare(ref)}
-                              className="btn btn-secondary btn-sm flex align-center justify-center gap-1"
-                              style={{ padding: '0.4rem 0.7rem', fontSize: '0.75rem' }}
+                              onClick={() => setSelectedDischargedRef(ref)}
+                              className="btn btn-secondary btn-sm flex align-center gap-1"
+                              style={{ padding: '0.45rem 0.8rem', fontSize: '0.775rem' }}
                             >
-                              <Activity size={12} />
-                              <span>Manage Care</span>
-                            </button>
-                            <button
-                              onClick={() => handleOpenForm(ref)}
-                              className="btn btn-primary btn-sm flex align-center justify-center gap-1"
-                              style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}
-                            >
-                              <FileCheck size={12} />
-                              <span>Discharge Form</span>
+                              <Eye size={13} />
+                              <span>Review Document</span>
                             </button>
                           </div>
                         </td>
@@ -1227,83 +1369,53 @@ export const PatientTreatment: React.FC = () => {
                   </tbody>
                 </table>
               </div>
-            )
-          ) : filteredDischarged.length === 0 ? (
-            <div className="card text-center p-8">
-              <CheckCircle size={40} className="text-muted m-b-4" />
-              <h4 className="font-semibold">No Discharged Records Found</h4>
-              <p className="text-muted text-sm">You have not completed any treatments matching these filters.</p>
-            </div>
-          ) : (
-            <div className="table-container card" style={{ padding: 0, overflow: 'hidden' }}>
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Patient Details</th>
-                    <th>Pension ID No.</th>
-                    <th>Confirmed Diagnosis</th>
-                    <th>Discharging Physician</th>
-                    <th>Total Invoiced</th>
-                    <th>Discharge Date</th>
-                    <th style={{ textAlign: 'right' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredDischarged.map(ref => (
-                    <tr key={ref.id} className="treatment-table-row">
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
-                            {ref.patientName || ref.staffName}
-                          </span>
-                          <span className="text-muted" style={{ fontSize: '0.725rem' }}>
-                            Relationship: {ref.patientRelationship || 'Self'}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className="font-mono text-sm font-semibold">{ref.pensionId || 'N/A'}</span>
-                      </td>
-                      <td>
-                        <span className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
-                          {ref.treatmentReport?.diagnosisConfirmed || 'N/A'}
+
+              {/* Mobile Card List View */}
+              <div className="visible-mobile flex flex-col gap-3">
+                {filteredDischarged.map(ref => (
+                  <div key={ref.id} className="bg-bg-secondary border border-border-color rounded-xl p-4 flex flex-col gap-3 shadow-sm animate-fade-in">
+                    <div className="flex justify-between items-start">
+                      <div className="flex flex-col">
+                        <span className="font-bold text-sm text-text-primary">{ref.patientName || ref.staffName}</span>
+                        <span className="text-[0.7rem] text-text-muted mt-0.5">Relationship: {ref.patientRelationship || 'Self'}</span>
+                      </div>
+                      <span className="text-xs font-bold text-success font-mono">
+                        ₦{ref.treatmentReport?.billingTotal?.toLocaleString() || '0'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 border-t border-border-color pt-2.5 text-xs">
+                      <div className="flex justify-between items-center">
+                        <span className="text-text-muted">Pension ID:</span>
+                        <span className="font-mono text-text-secondary font-semibold">{ref.pensionId || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-text-muted">Discharged:</span>
+                        <span className="text-text-secondary font-semibold">
+                          {ref.treatmentReport && new Date(ref.treatmentReport.completedAt).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                         </span>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '0.85rem' }}>{ref.treatmentReport?.physicianName || 'N/A'}</span>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 700 }} className="text-success">
-                          ₦{ref.treatmentReport?.billingTotal?.toLocaleString() || '0'}
-                        </span>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                          {ref.treatmentReport &&
-                            new Date(ref.treatmentReport.completedAt).toLocaleDateString([], {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric'
-                            })}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <button
-                            onClick={() => setSelectedDischargedRef(ref)}
-                            className="btn btn-secondary btn-sm flex align-center gap-1"
-                            style={{ padding: '0.45rem 0.8rem', fontSize: '0.775rem' }}
-                          >
-                            <Eye size={13} />
-                            <span>Review Document</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-text-muted">Physician:</span>
+                        <span className="text-text-secondary font-semibold">{ref.treatmentReport?.physicianName || 'N/A'}</span>
+                      </div>
+                      <div className="flex flex-col gap-0.5 border-t border-border-color border-dashed pt-2 mt-1">
+                        <span className="text-[0.65rem] text-text-muted uppercase font-bold">Confirmed Diagnosis</span>
+                        <p className="text-text-secondary m-0 leading-relaxed truncate">{ref.treatmentReport?.diagnosisConfirmed || 'N/A'}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => setSelectedDischargedRef(ref)}
+                      className="btn btn-secondary btn-sm w-full mt-1.5 font-bold py-2 text-xs flex justify-center items-center gap-1.5"
+                    >
+                      <Eye size={13} />
+                      <span>Review Certificate</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </>
       )}
@@ -1543,7 +1655,7 @@ export const PatientTreatment: React.FC = () => {
               </button>
             </div>
 
-            <div className="modal-body paper-document-body" style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' }}>
+            <div className="modal-body paper-document-body responsive-paper-body" style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' }}>
 
               {/* Paper Form Title */}
               <div className="paper-form-title-section">
@@ -1609,7 +1721,7 @@ export const PatientTreatment: React.FC = () => {
                   <div className="paper-section m-t-4">
                     <h4 className="paper-section-header">CLINICAL REPORTS</h4>
 
-                    <div className="clinical-reports-split-table display-only">
+                    <div className="clinical-reports-split-table display-only responsive-clinical-split">
                       <div className="clinical-column left-col">
                         <div className="form-group-full">
                           <span className="paper-label">DIAGNOSIS (CONFIRMED CLINICAL FINDINGS)</span>
@@ -1674,7 +1786,7 @@ export const PatientTreatment: React.FC = () => {
                     <h4 className="paper-section-header">(D) MEDICAL BILL / INVOICE SUMMARY</h4>
 
                     <div className="billing-table-wrapper">
-                      <table className="paper-billing-table display-only">
+                      <table className="paper-billing-table display-only" style={{ minWidth: '550px' }}>
                         <thead>
                           <tr>
                             <th style={{ width: '80px', textAlign: 'center' }}>S/NO</th>
@@ -2043,6 +2155,12 @@ export const PatientTreatment: React.FC = () => {
           display: flex;
           border-bottom: 2px solid var(--border-color);
           gap: 1.5rem;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none;
+        }
+        .sub-tabs-header::-webkit-scrollbar {
+          display: none;
         }
 
         .sub-tab-btn {

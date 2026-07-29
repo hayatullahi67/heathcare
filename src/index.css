@@ -609,3 +609,37 @@ body {
     display: none !important;
   }
 }
+
+/* Global billing and discharge document sheet responsiveness */
+.billing-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 640px) {
+  .responsive-paper-body {
+    padding: 1rem !important;
+  }
+  .responsive-paper-body .p-5,
+  .responsive-paper-body .p-6,
+  .responsive-paper-body .p-10 {
+    padding: 0.85rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .responsive-clinical-split {
+    grid-template-columns: 1fr !important;
+  }
+  .responsive-paper-body .flex-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .responsive-paper-body .items-end {
+    align-items: stretch !important;
+  }
+  .responsive-paper-body .col-span-2 {
+    grid-column: span 1 / span 1 !important;
+  }
+}

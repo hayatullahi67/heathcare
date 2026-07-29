@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReferralRequest, AppNotification, ReferralStatus, TreatmentReport, MockFile, SystemActivityLog } from '../types';
-import { INITIAL_REFERRALS, INITIAL_NOTIFICATIONS, INITIAL_ACTIVITY_LOGS } from '../mock/initialData';
 import { useAuth } from './AuthContext';
 import { collection, onSnapshot, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -43,7 +42,6 @@ interface ReferralContextType {
     referralId: string,
     vitals: { bloodPressure?: string; pulseRate?: number; temperature?: number; oxygenSaturation?: number }
   ) => Promise<{ success: boolean; message: string }>;
-  resetToMockData: () => void;
   markNotificationAsRead: (notifId: string) => void;
   clearNotifications: () => void;
   getReferralsForUser: () => ReferralRequest[];
@@ -78,28 +76,14 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Firestore Bindings for real-time referrals list syncing
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'referrals'), async (snapshot) => {
-      if (snapshot.empty) {
-        // Seeding database with initial mock referrals if empty
-        try {
-          const batch = writeBatch(db);
-          INITIAL_REFERRALS.forEach(ref => {
-            const docRef = doc(db, 'referrals', ref.id);
-            batch.set(docRef, ref);
-          });
-          await batch.commit();
-        } catch (err) {
-          console.error("Error seeding initial referrals to Firestore:", err);
-        }
-      } else {
-        const list: ReferralRequest[] = [];
-        snapshot.forEach(doc => {
-          list.push(doc.data() as ReferralRequest);
-        });
-        // Sort newest created first
-        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setReferrals(list);
-      }
+    const unsubscribe = onSnapshot(collection(db, 'referrals'), (snapshot) => {
+      const list: ReferralRequest[] = [];
+      snapshot.forEach(doc => {
+        list.push(doc.data() as ReferralRequest);
+      });
+      // Sort newest created first
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setReferrals(list);
     }, (error) => {
       console.error("Firestore database referrals sync error:", error);
     });
@@ -109,28 +93,14 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Firestore Bindings for real-time notifications list syncing
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'notifications'), async (snapshot) => {
-      if (snapshot.empty) {
-        // Seeding database with initial mock notifications if empty
-        try {
-          const batch = writeBatch(db);
-          INITIAL_NOTIFICATIONS.forEach(notif => {
-            const docRef = doc(db, 'notifications', notif.id);
-            batch.set(docRef, notif);
-          });
-          await batch.commit();
-        } catch (err) {
-          console.error("Error seeding initial notifications to Firestore:", err);
-        }
-      } else {
-        const list: AppNotification[] = [];
-        snapshot.forEach(doc => {
-          list.push(doc.data() as AppNotification);
-        });
-        // Sort newest first
-        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setNotifications(list);
-      }
+    const unsubscribe = onSnapshot(collection(db, 'notifications'), (snapshot) => {
+      const list: AppNotification[] = [];
+      snapshot.forEach(doc => {
+        list.push(doc.data() as AppNotification);
+      });
+      // Sort newest first
+      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setNotifications(list);
     }, (error) => {
       console.error("Firestore database notifications sync error:", error);
     });
@@ -140,28 +110,14 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Firestore Bindings for real-time system activity logs syncing
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'activityLogs'), async (snapshot) => {
-      if (snapshot.empty) {
-        // Seeding database with initial mock activity logs if empty
-        try {
-          const batch = writeBatch(db);
-          INITIAL_ACTIVITY_LOGS.forEach(log => {
-            const docRef = doc(db, 'activityLogs', log.id);
-            batch.set(docRef, log);
-          });
-          await batch.commit();
-        } catch (err) {
-          console.error("Error seeding initial activity logs to Firestore:", err);
-        }
-      } else {
-        const list: SystemActivityLog[] = [];
-        snapshot.forEach(doc => {
-          list.push(doc.data() as SystemActivityLog);
-        });
-        // Sort newest first
-        list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setActivityLogs(list);
-      }
+    const unsubscribe = onSnapshot(collection(db, 'activityLogs'), (snapshot) => {
+      const list: SystemActivityLog[] = [];
+      snapshot.forEach(doc => {
+        list.push(doc.data() as SystemActivityLog);
+      });
+      // Sort newest first
+      list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      setActivityLogs(list);
     }, (error) => {
       console.error("Firestore database activity logs sync error:", error);
     });
@@ -581,34 +537,6 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const resetToMockData = async () => {
-    // Overwrite Firestore collection with mock data
-    try {
-      const batchReferrals = writeBatch(db);
-      INITIAL_REFERRALS.forEach(ref => {
-        const docRef = doc(db, 'referrals', ref.id);
-        batchReferrals.set(docRef, ref);
-      });
-      await batchReferrals.commit();
-
-      const batchNotifications = writeBatch(db);
-      INITIAL_NOTIFICATIONS.forEach(notif => {
-        const docRef = doc(db, 'notifications', notif.id);
-        batchNotifications.set(docRef, notif);
-      });
-      await batchNotifications.commit();
-
-      const batchLogs = writeBatch(db);
-      INITIAL_ACTIVITY_LOGS.forEach(log => {
-        const docRef = doc(db, 'activityLogs', log.id);
-        batchLogs.set(docRef, log);
-      });
-      await batchLogs.commit();
-    } catch (err) {
-      console.error("Error resetting mock database collections in Firestore:", err);
-    }
-  };
-
   const markNotificationAsRead = async (notifId: string) => {
     const notif = notifications.find(n => n.id === notifId);
     if (!notif) return;
@@ -647,10 +575,9 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     if (currentUser.role === 'HOSPITAL') {
       return referrals.filter(
-        r => r.hospitalId === currentUser.hospitalId && 
-             (r.status === 'APPROVED_FORWARDED' || 
-              r.status === 'ACCEPTED' || 
-              r.status === 'TREATMENT_COMPLETED')
+        r => r.status === 'APPROVED_FORWARDED' ||
+             r.status === 'ACCEPTED' ||
+             r.status === 'TREATMENT_COMPLETED'
       );
     }
     return [];
@@ -676,7 +603,6 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         declineReferral,
         addProgressNote,
         updateVitals,
-        resetToMockData,
         markNotificationAsRead,
         clearNotifications,
         getReferralsForUser,

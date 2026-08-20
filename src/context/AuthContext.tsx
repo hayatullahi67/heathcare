@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { User, Hospital } from '../types';
-import { INITIAL_USERS, USER_PASSWORDS } from '../mock/initialData';
-import { collection, onSnapshot, doc, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 interface AuthContextType {
@@ -9,12 +8,20 @@ interface AuthContextType {
   users: User[];
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
   logout: () => void;
-  registerStaff: (name: string, email: string, pensionId: string, password: string) => Promise<{ success: boolean; message: string }>;
+  registerStaff: (name: string, email: string, pensionId: string, password: string, role?: 'RETIRED_STAFF' | 'STAFF') => Promise<{ success: boolean; message: string }>;
   registerHospital: (name: string, email: string, location: string, contactNumber: string, password: string) => Promise<{ success: boolean; hospital: Hospital; message: string }>;
   hospitalsList: Hospital[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+const DEVELOPMENT_STAFF_ACCOUNT: User = {
+  id: 'dev-staff-2',
+  name: 'Staff Test Account',
+  email: 'staff2@carelink.test',
+  role: 'STAFF',
+  pensionId: 'STAFF-TEST-01',
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -22,8 +29,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return saved ? JSON.parse(saved) : null;
   });
 
-  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
-  const [passwords, setPasswords] = useState<Record<string, string>>(USER_PASSWORDS);
+  const [users, setUsers] = useState<User[]>([]);
+  const [passwords, setPasswords] = useState<Record<string, string>>({});
   const [hospitalsList, setHospitalsList] = useState<Hospital[]>([]);
 
   useEffect(() => {
@@ -42,27 +49,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [currentUser]);
 
-  // Firestore users list binding
+  // Firestore users list binding. All user records originate from registration.
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'users'), async (snapshot) => {
-      if (snapshot.empty) {
-        try {
-          const batch = writeBatch(db);
-          INITIAL_USERS.forEach(user => {
-            const docRef = doc(db, 'users', user.id);
-            batch.set(docRef, user);
-          });
-          await batch.commit();
-        } catch (err) {
-          console.error("Error seeding initial users to Firestore:", err);
-        }
-      } else {
-        const list: User[] = [];
-        snapshot.forEach(doc => {
-          list.push(doc.data() as User);
-        });
-        setUsers(list);
-      }
+    const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
+      const list: User[] = [];
+      snapshot.forEach(doc => {
+        list.push(doc.data() as User);
+      });
+      setUsers(list);
     }, (err) => {
       console.error("Error syncing users from Firestore:", err);
     });
@@ -70,30 +64,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  // Firestore credentials/passwords list binding
+  // Firestore credentials/passwords list binding. Credentials are created at registration.
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'passwords'), async (snapshot) => {
-      if (snapshot.empty) {
-        try {
-          const batch = writeBatch(db);
-          Object.entries(USER_PASSWORDS).forEach(([email, password]) => {
-            const docRef = doc(db, 'passwords', email);
-            batch.set(docRef, { email, password });
-          });
-          await batch.commit();
-        } catch (err) {
-          console.error("Error seeding initial passwords to Firestore:", err);
+    const unsubscribe = onSnapshot(collection(db, 'passwords'), (snapshot) => {
+      const dict: Record<string, string> = {};
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.email && data.password) {
+          dict[data.email] = data.password;
         }
-      } else {
-        const dict: Record<string, string> = {};
-        snapshot.forEach(doc => {
-          const data = doc.data();
-          if (data.email && data.password) {
-            dict[data.email] = data.password;
-          }
-        });
-        setPasswords(dict);
-      }
+      });
+      setPasswords(dict);
     }, (err) => {
       console.error("Error syncing passwords from Firestore:", err);
     });
@@ -117,9 +98,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
-    await new Promise((resolve) => setTimeout(resolve, 600));
-
     const cleanEmail = email.trim().toLowerCase();
+
+    if (cleanEmail === DEVELOPMENT_STAFF_ACCOUNT.email && password === 'staff2demo') {
+      setCurrentUser(DEVELOPMENT_STAFF_ACCOUNT);
+      return { success: true, message: 'Development staff login successful' };
+    }
     
     const user = users.find(u => u.email.toLowerCase() === cleanEmail);
     if (!user) {
@@ -143,20 +127,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string,
     email: string,
     pensionId: string,
-    password: string
+    password: string,
+    role: 'RETIRED_STAFF' | 'STAFF' = 'RETIRED_STAFF',
   ): Promise<{ success: boolean; message: string }> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
     const cleanEmail = email.trim().toLowerCase();
     if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
       return { success: false, message: 'Email address already registered' };
     }
 
     const newStaff: User = {
-      id: `usr-staff-${Date.now()}`,
+      id: `usr-${role.toLowerCase()}-${Date.now()}`,
       email: cleanEmail,
       name,
-      role: 'RETIRED_STAFF',
+      role,
       pensionId
     };
 
@@ -177,8 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     contactNumber: string,
     password: string
   ): Promise<{ success: boolean; hospital: Hospital; message: string }> => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-
     const cleanEmail = email.trim().toLowerCase();
     if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
       return { success: false, hospital: {} as Hospital, message: 'Email address already registered' };

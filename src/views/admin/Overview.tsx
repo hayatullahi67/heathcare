@@ -1,33 +1,28 @@
 import React from 'react';
 import { useReferral } from '../../context/ReferralContext';
 import { useAuth } from '../../context/AuthContext';
-import { ClipboardList, Building, CheckCircle, Clock } from 'lucide-react';
+import { ClipboardList, Building, CheckCircle, Clock, Search, X } from 'lucide-react';
 
 export const Overview: React.FC = () => {
   const { referrals, activityLogs } = useReferral();
   const { hospitalsList } = useAuth();
 
   const [logSearch, setLogSearch] = React.useState('');
-  const [logFilter, setLogFilter] = React.useState('ALL');
 
   const filteredLogs = (activityLogs || []).filter(log => {
-    const matchesSearch =
+    return (
       log.userName.toLowerCase().includes(logSearch.toLowerCase()) ||
       log.details.toLowerCase().includes(logSearch.toLowerCase()) ||
-      log.action.toLowerCase().includes(logSearch.toLowerCase());
-
-    if (logFilter === 'ALL') return matchesSearch;
-    if (logFilter === 'USER_AUTH') return matchesSearch && (log.action === 'USER_LOGIN' || log.action === 'USER_LOGOUT');
-    if (logFilter === 'REFERRAL') return matchesSearch && (log.action === 'SUBMIT_REFERRAL' || log.action === 'APPROVE_REFERRAL' || log.action === 'REJECT_REFERRAL' || log.action === 'REQUEST_MORE_INFO');
-    if (logFilter === 'HOSPITAL_ACT') return matchesSearch && (log.action === 'ACCEPT_REFERRAL' || log.action === 'DECLINE_REFERRAL' || log.action === 'UPDATE_VITALS' || log.action === 'ADD_PROGRESS_NOTE' || log.action === 'COMPLETE_TREATMENT');
-    if (logFilter === 'REGISTRATION') return matchesSearch && log.action === 'REGISTER_USER';
-    return matchesSearch;
+      log.action.toLowerCase().includes(logSearch.toLowerCase())
+    );
   });
 
   const pendingCount = referrals.filter(r => r.status === 'PENDING_ADMIN').length;
   const activeCount = referrals.filter(r => r.status === 'ACCEPTED' || r.status === 'APPROVED_FORWARDED').length;
   const completedCount = referrals.filter(r => r.status === 'TREATMENT_COMPLETED').length;
   const hospitalCount = hospitalsList.length;
+  const hasLogFilters = Boolean(logSearch);
+  const clearLogFilters = () => setLogSearch('');
 
 
 
@@ -90,43 +85,14 @@ export const Overview: React.FC = () => {
 
 
       {/* System Audit Logs Section */}
-      <div className="bg-bg-secondary border border-border-color rounded-xl p-5 shadow-sm flex flex-col gap-4 w-full">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border-color pb-4">
-          <div>
-            <h3 className="font-bold text-xs text-text-primary flex items-center gap-2 m-0 uppercase tracking-wider">
-              <ClipboardList size={18} className="text-[#0ea5e9]" />
-              <span>Real-Time Audit Trail logs</span>
-            </h3>
-            <p className="text-text-muted text-xs m-0 mt-1">
-              Audit trails monitoring logins, retirees' requests, clinic vitals, and registrations.
-            </p>
-          </div>
-          <div className="flex items-center gap-3 w-full md:w-auto">
-            {/* Filter select */}
-            <select
-              value={logFilter}
-              onChange={e => setLogFilter(e.target.value)}
-              className="px-3 py-1.5 text-xs rounded-lg border border-border-color bg-bg-primary text-text-primary cursor-pointer font-semibold outline-none w-full sm:w-[180px]"
-            >
-              <option value="ALL">All Operations</option>
-              <option value="USER_AUTH">User Sessions</option>
-              <option value="REFERRAL">Referral Lifecycle</option>
-              <option value="HOSPITAL_ACT">Clinical Care Logs</option>
-              <option value="REGISTRATION">System Registration</option>
-            </select>
-            {/* Search Input */}
-            <input
-              type="text"
-              placeholder="Search logs..."
-              value={logSearch}
-              onChange={e => setLogSearch(e.target.value)}
-              className="px-3 py-1.5 text-xs rounded-lg border border-border-color bg-bg-primary text-text-primary outline-none w-full sm:w-[220px]"
-            />
-          </div>
+      <section className="overflow-hidden rounded-xl border border-border-color bg-bg-secondary shadow-sm">
+        <div className="admin-log-toolbar border-b border-border-color bg-bg-primary/40 px-5 py-3">
+          <label className="admin-log-search rounded-lg border border-border-color bg-bg-secondary px-3 py-2.5 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary-light"><Search size={14} className="shrink-0 text-text-muted" /><input type="text" placeholder="Search records" value={logSearch} onChange={e => setLogSearch(e.target.value)} className="min-w-0 flex-1 border-0 bg-transparent text-xs text-text-primary outline-none placeholder:text-text-muted" />{logSearch && <button onClick={() => setLogSearch('')} aria-label="Clear activity log search" className="text-text-muted hover:text-text-primary"><X size={14} /></button>}</label>
+          <div className="admin-log-count"><span className="whitespace-nowrap text-xs font-bold text-text-muted">{filteredLogs.length} record{filteredLogs.length === 1 ? '' : 's'}</span>{hasLogFilters && <button onClick={clearLogFilters} className="rounded-lg px-2.5 py-2 text-xs font-bold text-primary hover:bg-primary-light">Clear</button>}</div>
         </div>
 
         {filteredLogs.length === 0 ? (
-          <div className="text-center p-6 text-text-muted text-sm border border-border-color rounded-lg bg-bg-secondary">No audit logs matching filters found.</div>
+          <div className="flex min-h-44 flex-col items-center justify-center p-6 text-center"><div className="rounded-xl bg-bg-primary p-3 text-text-muted"><ClipboardList size={20} /></div><p className="mt-3 text-sm font-bold text-text-primary">{hasLogFilters ? 'No matching activity' : 'No activity recorded yet'}</p><p className="mt-1 text-xs text-text-muted">{hasLogFilters ? 'Adjust or clear the current filters to see more records.' : 'System events will appear here as they occur.'}</p>{hasLogFilters && <button onClick={clearLogFilters} className="mt-3 text-xs font-bold text-primary hover:text-primary-hover">Clear filters</button>}</div>
         ) : (
           <>
             {/* Desktop Table View */}
@@ -227,7 +193,7 @@ export const Overview: React.FC = () => {
             </div>
           </>
         )}
-      </div>
+      </section>
 
     </div>
   );

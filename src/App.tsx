@@ -13,9 +13,13 @@ import { ReferralReview as AdminReferralReview } from './views/admin/ReferralRev
 import { Overview as StaffOverview } from './views/staff/Overview';
 import { NewRequest as StaffNewRequest } from './views/staff/NewRequest';
 import { MedicalHistory as StaffMedicalHistory } from './views/staff/MedicalHistory';
+import { Overview as Staff2Overview } from './views/staff2/Overview';
+import { NewRequest as Staff2NewRequest } from './views/staff2/NewRequest';
+import { MedicalHistory as Staff2MedicalHistory } from './views/staff2/MedicalHistory';
 
 import { IncomingReferrals as HospitalIncoming } from './views/hospital/IncomingReferrals';
 import { PatientTreatment as HospitalTreatment } from './views/hospital/PatientTreatment';
+import { Overview as HospitalOverview } from './views/hospital/Overview';
 
 import './App.css';
 
@@ -25,14 +29,16 @@ const getDefaultPathForRole = (role: string) => {
       return '/admin/overview';
     case 'RETIRED_STAFF':
       return '/staff/overview';
+    case 'STAFF':
+      return '/staff2/overview';
     case 'HOSPITAL':
-      return '/hospital/incoming';
+      return '/hospital/overview';
     default:
       return '/login';
   }
 };
 
-const ProtectedRoute = ({ allowedRoles }: { allowedRoles: ('SUPER_ADMIN' | 'RETIRED_STAFF' | 'HOSPITAL')[] }) => {
+const ProtectedRoute = ({ allowedRoles }: { allowedRoles: ('SUPER_ADMIN' | 'RETIRED_STAFF' | 'STAFF' | 'HOSPITAL')[] }) => {
   const { currentUser } = useAuth();
 
   if (!currentUser) {
@@ -89,8 +95,16 @@ function AppContent() {
         <Route path="/staff/history" element={<StaffMedicalHistory />} />
       </Route>
 
+      {/* Staff routes */}
+      <Route element={<ProtectedRoute allowedRoles={['STAFF']} />}>
+        <Route path="/staff2/overview" element={<Staff2Overview />} />
+        <Route path="/staff2/new-request" element={<Staff2NewRequest />} />
+        <Route path="/staff2/history" element={<Staff2MedicalHistory />} />
+      </Route>
+
       {/* Hospital routes */}
       <Route element={<ProtectedRoute allowedRoles={['HOSPITAL']} />}>
+        <Route path="/hospital/overview" element={<HospitalOverview />} />
         <Route path="/hospital/incoming" element={<HospitalIncoming />} />
         <Route path="/hospital/patient-care" element={<HospitalTreatment />} />
       </Route>

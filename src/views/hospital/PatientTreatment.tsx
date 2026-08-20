@@ -525,8 +525,7 @@ export const PatientTreatment: React.FC = () => {
   // Statistics calculations
   const activeCount = activePatients.length;
   const dischargedCount = dischargedPatients.length;
-  const activeEmergencies = activePatients.filter(r => r.urgencyLevel === 'EMERGENCY').length;
-  const activeUrgents = activePatients.filter(r => r.urgencyLevel === 'URGENT').length;
+  const pendingReferralsCount = referrals.filter(r => r.status === 'APPROVED_FORWARDED').length;
 
   return (
     <div className="patient-treatment flex flex-col gap-6 w-full fade-in">
@@ -1067,17 +1066,8 @@ export const PatientTreatment: React.FC = () => {
                 <Activity size={24} style={{ color: '#ef4444' }} />
               </div>
               <div className="stat-details">
-                <h3>{activeEmergencies}</h3>
-                <p>Admitted Emergencies</p>
-              </div>
-            </div>
-            <div className="stat-card urgents">
-              <div className="stat-icon-wrapper text-warning">
-                <Activity size={24} style={{ color: '#f59e0b' }} />
-              </div>
-              <div className="stat-details">
-                <h3>{activeUrgents}</h3>
-                <p>Admitted Urgent Cases</p>
+                <h3>{pendingReferralsCount}</h3>
+                <p>Pending Referrals</p>
               </div>
             </div>
             <div className="stat-card discharged">

@@ -71,8 +71,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           { id: 'new-request', label: 'Requests', path: '/staff/new-request', icon: <ClipboardList size={18} /> },
           { id: 'history', label: 'History', path: '/staff/history', icon: <History size={18} /> }
         ];
+      case 'STAFF':
+        return [
+          { id: 'overview', label: 'Overview', path: '/staff2/overview', icon: <LayoutDashboard size={18} /> },
+          { id: 'new-request', label: 'Requests', path: '/staff2/new-request', icon: <ClipboardList size={18} /> },
+          { id: 'history', label: 'History', path: '/staff2/history', icon: <History size={18} /> }
+        ];
       case 'HOSPITAL':
         return [
+          { id: 'overview', label: 'Overview', path: '/hospital/overview', icon: <LayoutDashboard size={18} /> },
           { id: 'incoming', label: 'Incoming Referrals', path: '/hospital/incoming', icon: <Building2 size={18} /> },
           { id: 'patient-care', label: 'Patient Care', path: '/hospital/patient-care', icon: <ClipboardList size={18} /> }
         ];
@@ -108,10 +115,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           ))}
         </nav>
 
-        {currentUser.role === 'RETIRED_STAFF' && (
+        {(currentUser.role === 'RETIRED_STAFF' || currentUser.role === 'STAFF') && (
           <div className="sidebar-action-btn-container" style={{ padding: '0 1rem 1rem 1rem' }}>
             <Link
-              to="/staff/new-request"
+              to={currentUser.role === 'STAFF' ? '/staff2/new-request' : '/staff/new-request'}
               className="btn btn-primary w-full flex align-center justify-center gap-2"
               style={{ display: 'flex', textDecoration: 'none', backgroundColor: '#005f73', color: 'white', border: 'none', borderRadius: '8px', padding: '0.75rem', fontWeight: 700 }}
             >
@@ -131,9 +138,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <p className="user-role">
                 {currentUser.role === 'SUPER_ADMIN'
                   ? 'Administrator'
-                  : currentUser.role === 'RETIRED_STAFF'
-                    ? 'Retired Staff'
-                    : 'Hospital Partner'}
+                    : currentUser.role === 'RETIRED_STAFF'
+                      ? 'Retired Staff'
+                      : currentUser.role === 'STAFF'
+                        ? 'Staff'
+                        : 'Hospital Partner'}
               </p>
             </div>
           </div>
@@ -175,10 +184,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             ))}
           </nav>
 
-          {currentUser.role === 'RETIRED_STAFF' && (
+          {(currentUser.role === 'RETIRED_STAFF' || currentUser.role === 'STAFF') && (
             <div className="sidebar-action-btn-container" style={{ padding: '0 1rem 1rem 1rem' }}>
               <Link
-                to="/staff/new-request"
+                to={currentUser.role === 'STAFF' ? '/staff2/new-request' : '/staff/new-request'}
                 onClick={() => setMobileMenuOpen(false)}
                 className="btn btn-primary w-full flex align-center justify-center gap-2"
                 style={{ display: 'flex', textDecoration: 'none', backgroundColor: '#005f73', color: 'white', border: 'none', borderRadius: '8px', padding: '0.75rem', fontWeight: 700 }}
@@ -201,7 +210,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     ? 'Administrator'
                     : currentUser.role === 'RETIRED_STAFF'
                       ? 'Retired Staff'
-                      : 'Hospital Partner'}
+                      : currentUser.role === 'STAFF'
+                        ? 'Staff'
+                        : 'Hospital Partner'}
                 </p>
               </div>
             </div>
@@ -307,7 +318,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     ? 'Super Admin'
                     : currentUser.role === 'RETIRED_STAFF'
                       ? currentUser.department || 'Retired Staff'
-                      : 'Clinic Specialist'}
+                      : currentUser.role === 'STAFF'
+                        ? currentUser.department || 'Staff'
+                        : 'Clinic Specialist'}
                 </span>
               </div>
               <div className="avatar" style={{ width: '36px', height: '36px', fontSize: '0.85rem' }}>

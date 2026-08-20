@@ -64,7 +64,7 @@ export const ManageUsers: React.FC = () => {
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   // Active form tab ('STAFF' or 'HOSPITAL')
-  const [activeFormTab, setActiveFormTab] = useState<'STAFF' | 'HOSPITAL'>('STAFF');
+  const [activeFormTab, setActiveFormTab] = useState<'RETIRED_STAFF' | 'STAFF' | 'HOSPITAL'>('RETIRED_STAFF');
   const [viewMode, setViewMode] = useState<'LIST' | 'CREATE'>('LIST');
 
   // Staff Form state
@@ -86,7 +86,7 @@ export const ManageUsers: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successData, setSuccessData] = useState<{
-    role: 'STAFF' | 'HOSPITAL';
+    role: 'RETIRED_STAFF' | 'STAFF' | 'HOSPITAL';
     email: string;
     tempPass: string;
     msg: string;
@@ -106,17 +106,18 @@ export const ManageUsers: React.FC = () => {
     setError(null);
     setSuccessData(null);
     setLoading(true);
-    const res = await registerStaff(staffName, staffEmail, pensionId, staffPassword);
+    const staffRole = activeFormTab === 'STAFF' ? 'STAFF' : 'RETIRED_STAFF';
+    const res = await registerStaff(staffName, staffEmail, pensionId, staffPassword, staffRole);
     setLoading(false);
 
     if (res.success) {
       setSuccessData({
-        role: 'STAFF',
+        role: staffRole,
         email: staffEmail.trim().toLowerCase(),
         tempPass: staffPassword,
         msg: res.message
       });
-      logActivity('REGISTER_USER', `Registered new retired staff member: ${staffName} (${staffEmail.trim().toLowerCase()}).`);
+      logActivity('REGISTER_USER', `Registered new ${staffRole === 'STAFF' ? 'staff' : 'retired staff'} member: ${staffName} (${staffEmail.trim().toLowerCase()}).`);
       // Reset form
       setStaffName('');
       setStaffEmail('');
@@ -214,8 +215,8 @@ export const ManageUsers: React.FC = () => {
               <div style={{ fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2 }}>
                 {users.length.toLocaleString()}
               </div>
-              <span style={{ fontSize: '0.75rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                ↑ +12% from last month
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Live registered accounts
               </span>
             </div>
 
@@ -287,6 +288,7 @@ export const ManageUsers: React.FC = () => {
                     <option value="ALL">Filter by Role</option>
                     <option value="SUPER_ADMIN">Super Admin</option>
                     <option value="RETIRED_STAFF">Retired Staff</option>
+                    <option value="STAFF">Staff</option>
                     <option value="HOSPITAL">Hospital Partner</option>
                   </select>
                   <div style={{ position: 'absolute', left: '0.75rem', pointerEvents: 'none', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
@@ -371,6 +373,11 @@ export const ManageUsers: React.FC = () => {
                         roleBg = '#f1f5f9';
                         roleLabel = 'Retired Staff';
                         dotColor = '#94a3b8';
+                      } else if (user.role === 'STAFF') {
+                        roleColor = '#0369a1';
+                        roleBg = '#e0f2fe';
+                        roleLabel = 'Staff';
+                        dotColor = '#0284c7';
                       } else if (user.role === 'HOSPITAL') {
                         roleColor = '#0f766e';
                         roleBg = '#ccfbf1';
@@ -408,7 +415,7 @@ export const ManageUsers: React.FC = () => {
                             {user.role === 'HOSPITAL' && (
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{getHospitalName(user.hospitalId)}</span>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Facility ID: {user.hospitalId || 'CGH-202'}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Facility ID: {user.hospitalId || 'Not assigned'}</span>
                               </div>
                             )}
                             {user.role === 'SUPER_ADMIN' && (
@@ -470,6 +477,11 @@ export const ManageUsers: React.FC = () => {
                     roleBg = '#f1f5f9';
                     roleLabel = 'Retired Staff';
                     dotColor = '#94a3b8';
+                  } else if (user.role === 'STAFF') {
+                    roleColor = '#0369a1';
+                    roleBg = '#e0f2fe';
+                    roleLabel = 'Staff';
+                    dotColor = '#0284c7';
                   } else if (user.role === 'HOSPITAL') {
                     roleColor = '#0f766e';
                     roleBg = '#ccfbf1';
@@ -522,7 +534,7 @@ export const ManageUsers: React.FC = () => {
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-text-muted">Facility ID:</span>
-                              <span className="text-text-secondary font-semibold">{user.hospitalId || 'CGH-202'}</span>
+                              <span className="text-text-secondary font-semibold">{user.hospitalId || 'Not assigned'}</span>
                             </div>
                           </>
                         )}
@@ -641,6 +653,33 @@ export const ManageUsers: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
+                  setActiveFormTab('RETIRED_STAFF');
+                  setError(null);
+                  setSuccessData(null);
+                }}
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  padding: '0.5rem',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  backgroundColor: activeFormTab === 'RETIRED_STAFF' ? '#ffffff' : 'transparent',
+                  color: activeFormTab === 'RETIRED_STAFF' ? '#0f172a' : '#64748b',
+                  boxShadow: activeFormTab === 'RETIRED_STAFF' ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Retired Staff
+              </button>
+              <button
+                type="button"
+                onClick={() => {
                   setActiveFormTab('STAFF');
                   setError(null);
                   setSuccessData(null);
@@ -663,7 +702,7 @@ export const ManageUsers: React.FC = () => {
                   transition: 'all 0.15s ease'
                 }}
               >
-                Retired Staff
+                Staff
               </button>
               <button
                 type="button"
@@ -714,7 +753,7 @@ export const ManageUsers: React.FC = () => {
                   <div className="flex justify-between">
                     <span className="text-muted text-sm">Role</span>
                     <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                      {successData.role === 'STAFF' ? 'Retired Staff' : 'Hospital Portal'}
+                      {successData.role === 'HOSPITAL' ? 'Hospital Portal' : successData.role === 'STAFF' ? 'Staff' : 'Retired Staff'}
                     </span>
                   </div>
                   <div className="flex justify-between">
@@ -737,7 +776,7 @@ export const ManageUsers: React.FC = () => {
 
             {/* Forms fields */}
             <div>
-              {activeFormTab === 'STAFF' ? (
+              {activeFormTab !== 'HOSPITAL' ? (
                 <form onSubmit={handleStaffSubmit} className="user-form flex flex-col gap-4">
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     <div className="form-group">

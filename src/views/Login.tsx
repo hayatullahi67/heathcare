@@ -139,6 +139,19 @@ export const Login: React.FC = () => {
             </button>
 
             <button
+              onClick={() => handleQuickLogin('staff2@carelink.test', 'staff2demo')}
+              className="quick-access-btn staff"
+              type="button"
+            >
+              <div className="flex justify-between w-full align-center">
+                <span className="persona-role">Staff</span>
+                <span className="persona-badge staff">Development</span>
+              </div>
+              <span className="quick-credential">staff2@carelink.test</span>
+              <p className="persona-desc">Development login for the Staff workspace.</p>
+            </button>
+
+            <button
               onClick={() => handleQuickLogin('city@hospital.org', 'hospital123')}
               className="quick-access-btn hospital"
               type="button"

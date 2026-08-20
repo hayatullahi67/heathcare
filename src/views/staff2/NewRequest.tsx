@@ -114,7 +114,7 @@ export const NewRequest: React.FC = () => {
     if (res.success) {
       setSuccess(true);
       setTimeout(() => {
-        navigate('/staff/overview');
+        navigate('/staff2/overview');
       }, 1500);
     } else {
       setError(res.message);
@@ -127,7 +127,7 @@ export const NewRequest: React.FC = () => {
       {/* Back button link */}
       <div>
         <button
-          onClick={() => navigate('/staff/overview')}
+          onClick={() => navigate('/staff2/overview')}
           className="px-4 py-2 font-bold text-sm flex items-center gap-2 border border-border-color rounded-lg bg-bg-secondary text-text-primary hover:bg-bg-primary transition-all cursor-pointer shadow-sm"
         >
           <ArrowLeft size={16} />
@@ -142,7 +142,7 @@ export const NewRequest: React.FC = () => {
           </div>
           <h2 className="font-extrabold text-xl sm:text-2xl text-text-primary m-0">CBN Referral Form Submitted Securely</h2>
           <p className="text-text-muted text-sm max-w-sm m-0 leading-relaxed">
-            Your Retiree Medical Referral Form has been filed. We are forwarding you back to the tracker overview tab...
+            Your Staff Medical Referral Form has been filed. We are forwarding you back to the tracker overview tab...
           </p>
         </div>
       ) : (
@@ -154,7 +154,7 @@ export const NewRequest: React.FC = () => {
               Central Bank of Nigeria • Lafia Branch
             </h4>
             <h1 className="text-xl sm:text-2xl font-extrabold text-text-primary tracking-tight m-0 uppercase">
-              Retiree / Pensioner Medical Referral Form
+              Staff Medical Referral Form
             </h1>
             <p className="text-text-muted text-xs leading-relaxed max-w-2xl mx-auto m-0">
               Kindly complete the patient profile and medical facility details in Section (B) below. Sections (C) and (D) overleaf will be completed by the hospital partner upon discharge.
@@ -226,7 +226,7 @@ export const NewRequest: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-text-secondary" htmlFor="relationship-select">Relationship to Retiree</label>
+                  <label className="text-xs font-bold text-text-secondary" htmlFor="relationship-select">Relationship to Staff Member</label>
                   <select
                     id="relationship-select"
                     className="bg-bg-primary text-text-primary border border-border-color rounded-lg px-3 py-2 text-sm outline-none focus:border-primary w-full transition-all cursor-pointer"
@@ -234,10 +234,9 @@ export const NewRequest: React.FC = () => {
                     onChange={e => setPatientRelationship(e.target.value)}
                     disabled={loading}
                   >
-                    <option value="Self">Self (Retiree / Pensioner)</option>
-                    <option value="Spouse">Spouse</option>
-                    {/* <option value="Child">Child</option>
-                    <option value="Dependent">Other Dependent</option> */}
+                    <option value="Self">Myself</option>
+                    <option value="Wife">Wife</option>
+                    <option value="Child">Child</option>
                   </select>
                 </div>
 
@@ -297,7 +296,7 @@ export const NewRequest: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-text-secondary" htmlFor="retiree-name">Name of Retiree / Pensioner</label>
+                  <label className="text-xs font-bold text-text-secondary" htmlFor="retiree-name">Name of Staff Member</label>
                   <input
                     id="retiree-name"
                     type="text"

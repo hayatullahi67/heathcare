@@ -180,8 +180,8 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isSigned?: boolean;
     }
   ): Promise<{ success: boolean; message: string }> => {
-    if (!currentUser || currentUser.role !== 'RETIRED_STAFF') {
-      return { success: false, message: 'Only retired staff can request referrals.' };
+    if (!currentUser || !['RETIRED_STAFF', 'STAFF'].includes(currentUser.role)) {
+      return { success: false, message: 'Only staff accounts can request referrals.' };
     }
 
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -570,7 +570,7 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const getReferralsForUser = (): ReferralRequest[] => {
     if (!currentUser) return [];
     if (currentUser.role === 'SUPER_ADMIN') return referrals;
-    if (currentUser.role === 'RETIRED_STAFF') {
+    if (currentUser.role === 'RETIRED_STAFF' || currentUser.role === 'STAFF') {
       return referrals.filter(r => r.staffId === currentUser.id);
     }
     if (currentUser.role === 'HOSPITAL') {

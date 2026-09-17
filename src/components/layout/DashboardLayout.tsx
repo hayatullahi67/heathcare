@@ -2,11 +2,8 @@ import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useReferral } from '../../context/ReferralContext';
-import { useTheme } from '../../context/ThemeContext';
 import {
   Bell,
-  Sun,
-  Moon,
   LogOut,
   Menu,
   X,
@@ -30,7 +27,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const { currentUser, logout } = useAuth();
   const { getNotificationsForUser, markNotificationAsRead, clearNotifications, logActivity } = useReferral();
-  const { theme, toggleTheme } = useTheme();
 
   const handleLogout = () => {
     if (currentUser) {

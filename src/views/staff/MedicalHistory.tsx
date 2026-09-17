@@ -528,7 +528,7 @@ export const MedicalHistory: React.FC = () => {
                           <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontWeight: 600 }}>{item.label}</td>
                           <td style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{item.multiplier}</td>
                           <td style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, fontFamily: 'monospace', color: '#38bdf8' }}>
-                            ₦{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            ₦{(item.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </td>
                         </tr>
                       ))}

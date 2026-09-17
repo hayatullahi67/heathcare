@@ -244,11 +244,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           </div>
 
           <div className="header-right">
-            {/* Theme Toggle */}
-            <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle Theme">
-              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
-            </button>
-
             {/* Notification Bell */}
             <div className="notification-wrapper">
               <button

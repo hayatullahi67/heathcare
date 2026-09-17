@@ -48,6 +48,14 @@ export const INITIAL_USERS: User[] = [
     department: 'Finance'
   },
   {
+    id: 'usr-staff-active-1',
+    email: 'activestaff@staff.org',
+    name: 'Michael Adeyemi',
+    role: 'STAFF',
+    staffIdNumber: 'STF-45892',
+    department: 'Information Technology'
+  },
+  {
     id: 'usr-hosp-1',
     email: 'city@hospital.org',
     name: 'City General Staff',
@@ -75,6 +83,7 @@ export const USER_PASSWORDS: Record<string, string> = {
   'admin@healthcare.org': 'admin123',
   'john@staff.org': 'staff123',
   'jane@staff.org': 'staff123',
+  'activestaff@staff.org': 'staff123',
   'city@hospital.org': 'hospital123',
   'metro@hospital.org': 'hospital123',
   'jude@hospital.org': 'hospital123'
@@ -805,6 +814,32 @@ export const INITIAL_REFERRALS: ReferralRequest[] = [
     departmentAtExit: 'Human Resources',
     branchCenter: 'Minna',
     residentialAddress: 'Plot 11 Bosso Road, Minna, Niger State',
+    isSigned: true
+  },
+  {
+    id: 'ref-123',
+    staffId: 'usr-staff-active-1',
+    staffName: 'Michael Adeyemi',
+    requesterRole: 'STAFF',
+    staffIdNumber: 'STF-45892',
+    hospitalId: 'hosp-1',
+    hospitalName: 'City General Hospital',
+    diagnosisDescription: 'Recurrent severe migraine headaches with visual aura. Requesting neurological consultation and brain MRI scan.',
+    urgencyLevel: 'ROUTINE',
+    attachments: [],
+    status: 'ACCEPTED',
+    adminNotes: 'Authorized for neurological consult and MRI examination.',
+    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    patientName: 'Michael Adeyemi',
+    patientRelationship: 'Self',
+    patientAge: 38,
+    patientSex: 'Male',
+    statusAtExit: 'Senior Analyst, GL-12',
+    telephoneNumber: '08012345678',
+    departmentAtExit: 'Information Technology',
+    branchCenter: 'Abuja',
+    residentialAddress: 'Plot 104, Wuse II, Abuja',
     isSigned: true
   }
 ];

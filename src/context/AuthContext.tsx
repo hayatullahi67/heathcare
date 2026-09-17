@@ -20,6 +20,7 @@ const DEVELOPMENT_STAFF_ACCOUNT: User = {
   name: 'Staff Test Account',
   email: 'staff2@carelink.test',
   role: 'STAFF',
+  staffIdNumber: 'STAFF-TEST-01',
   pensionId: 'STAFF-TEST-01',
 };
 
@@ -140,7 +141,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       email: cleanEmail,
       name,
       role,
-      pensionId
+      pensionId: role === 'RETIRED_STAFF' ? pensionId : pensionId,
+      staffIdNumber: role === 'STAFF' ? pensionId : undefined
     };
 
     try {

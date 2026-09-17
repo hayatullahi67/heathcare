@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useReferral } from '../../context/ReferralContext';
 import { Badge } from '../../components/common/Badge';
-import type { ReferralRequest } from '../../types';
+import { type ReferralRequest, type MockFile, getReferralIdInfo } from '../../types';
 import {
   FileText,
   X,
@@ -11,16 +11,311 @@ import {
   User,
   Download,
   AlertCircle,
-  Search
+  AlertTriangle,
+  CheckCircle,
+  Search,
+  Edit3,
+  Send,
+  Upload,
+  Trash2,
+  CheckCircle2,
+  PenTool,
+  Receipt,
+  ArrowLeft
 } from 'lucide-react';
 
+const SignaturePadModal: React.FC<{
+  title: string;
+  onSave: (dataUrl: string) => void;
+  onClose: () => void;
+}> = ({ title, onSave, onClose }) => {
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = React.useState(false);
+  const [hasDrawn, setHasDrawn] = React.useState(false);
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    ctx.beginPath();
+    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    setIsDrawing(true);
+    setHasDrawn(true);
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const handleClear = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasDrawn(false);
+  };
+
+  const handleConfirm = () => {
+    const canvas = canvasRef.current;
+    if (!canvas || !hasDrawn) return;
+    const dataUrl = canvas.toDataURL('image/png');
+    onSave(dataUrl);
+    onClose();
+  };
+
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 9999 }}>
+      <div
+        className="modal-content fade-in"
+        onClick={e => e.stopPropagation()}
+        style={{ maxWidth: '500px', width: '90%', borderRadius: '16px', padding: '1.5rem', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+            {title}
+          </h3>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            Draw your signature inside the box using your mouse, stylus, or fingertip:
+          </span>
+
+          <div style={{ border: '2px dashed var(--border-color)', borderRadius: '8px', backgroundColor: '#0b0f19', padding: '0.5rem', textAlign: 'center' }}>
+            <canvas
+              ref={canvasRef}
+              width={420}
+              height={160}
+              onMouseDown={startDrawing}
+              onMouseMove={draw}
+              onMouseUp={stopDrawing}
+              onMouseLeave={stopDrawing}
+              onTouchStart={startDrawing}
+              onTouchMove={draw}
+              onTouchEnd={stopDrawing}
+              style={{ width: '100%', height: '160px', backgroundColor: '#0b0f19', borderRadius: '4px', cursor: 'crosshair', touchAction: 'none' }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={handleClear}
+              className="btn btn-secondary btn-sm"
+              style={{ fontSize: '0.8rem' }}
+            >
+              Clear Canvas
+            </button>
+
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: '0.8rem' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirm}
+                disabled={!hasDrawn}
+                className="btn btn-primary btn-sm"
+                style={{ fontSize: '0.8rem', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', borderColor: '#0284c7', color: '#ffffff', fontWeight: 700 }}
+              >
+                Save Signature
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 export const MedicalHistory: React.FC = () => {
-  const { getReferralsForUser } = useReferral();
+  const { getReferralsForUser, resubmitReferral, approveMedicalBill, rejectMedicalBill } = useReferral();
   const referrals = getReferralsForUser();
 
   const [selectedCase, setSelectedCase] = useState<ReferralRequest | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showDetailedReport, setShowDetailedReport] = useState<ReferralRequest | null>(null);
+
+  // Bill Review & Dispute States
+  const [billReviewRef, setBillReviewRef] = useState<ReferralRequest | null>(null);
+  const [isRejectingBill, setIsRejectingBill] = useState(false);
+  const [billRejectReason, setBillRejectReason] = useState('');
+  const [billActionLoading, setBillActionLoading] = useState(false);
+  const [billActionError, setBillActionError] = useState<string | null>(null);
+  const [billActionSuccess, setBillActionSuccess] = useState<string | null>(null);
+  const [patientSignatureImage, setPatientSignatureImage] = useState<string>('');
+  const [showPatientSignModal, setShowPatientSignModal] = useState(false);
+  const [patientConfirmName, setPatientConfirmName] = useState('');
+
+  // Resubmit Referral Form States
+  const [resubmitTarget, setResubmitTarget] = useState<ReferralRequest | null>(null);
+  const [resubmitDiagnosis, setResubmitDiagnosis] = useState('');
+  const [resubmitPhone, setResubmitPhone] = useState('');
+  const [resubmitAddress, setResubmitAddress] = useState('');
+  const [resubmitStatusAtExit, setResubmitStatusAtExit] = useState('');
+  const [resubmitDepartment, setResubmitDepartment] = useState('');
+  const [resubmitNotes, setResubmitNotes] = useState('');
+  const [resubmitAttachments, setResubmitAttachments] = useState<MockFile[]>([]);
+  const [resubmitLoading, setResubmitLoading] = useState(false);
+  const [resubmitError, setResubmitError] = useState<string | null>(null);
+  const [resubmitSuccess, setResubmitSuccess] = useState(false);
+
+  const openBillReview = (ref: ReferralRequest) => {
+    setBillReviewRef(ref);
+    setIsRejectingBill(false);
+    setBillRejectReason('');
+    setBillActionError(null);
+    setBillActionSuccess(null);
+    setPatientSignatureImage(ref.treatmentReport?.patientSignatureImage || '');
+    setPatientConfirmName(ref.treatmentReport?.confirmedByPatientName || ref.patientName || ref.staffName || '');
+    setSelectedCase(null);
+  };
+
+  const handleApproveBill = async () => {
+    if (!billReviewRef) return;
+    setBillActionLoading(true);
+    setBillActionError(null);
+
+    const res = await approveMedicalBill(billReviewRef.id, {
+      patientSignatureImage: patientSignatureImage || undefined,
+      confirmedName: patientConfirmName || undefined
+    });
+
+    setBillActionLoading(false);
+    if (res.success) {
+      setBillActionSuccess('Medical bill approved successfully! Case has been marked completed.');
+      setTimeout(() => {
+        setBillReviewRef(null);
+        setBillActionSuccess(null);
+      }, 1800);
+    } else {
+      setBillActionError(res.message);
+    }
+  };
+
+  const handleRejectBill = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!billReviewRef) return;
+    if (!billRejectReason.trim()) {
+      setBillActionError('Please state the reason for disputing this medical bill.');
+      return;
+    }
+
+    setBillActionLoading(true);
+    setBillActionError(null);
+
+    const res = await rejectMedicalBill(billReviewRef.id, billRejectReason.trim());
+
+    setBillActionLoading(false);
+    if (res.success) {
+      setBillActionSuccess('Bill dispute submitted to hospital for revision.');
+      setTimeout(() => {
+        setBillReviewRef(null);
+        setBillActionSuccess(null);
+      }, 1800);
+    } else {
+      setBillActionError(res.message);
+    }
+  };
+
+  const openResubmitModal = (ref: ReferralRequest) => {
+    setResubmitTarget(ref);
+    setResubmitDiagnosis(ref.diagnosisDescription || '');
+    setResubmitPhone(ref.telephoneNumber || '');
+    setResubmitAddress(ref.residentialAddress || '');
+    setResubmitStatusAtExit(ref.statusAtExit || '');
+    setResubmitDepartment(ref.departmentAtExit || '');
+    setResubmitAttachments(ref.attachments ? [...ref.attachments] : []);
+    setResubmitNotes('');
+    setResubmitError(null);
+    setResubmitSuccess(false);
+    setSelectedCase(null);
+  };
+
+  const handleAddAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    const newFile: MockFile = {
+      name: file.name,
+      size: `${sizeMB} MB`,
+      type: file.type || 'application/pdf'
+    };
+    setResubmitAttachments(prev => [...prev, newFile]);
+    e.target.value = '';
+  };
+
+  const handleRemoveAttachment = (indexToRemove: number) => {
+    setResubmitAttachments(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const handleResubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resubmitTarget) return;
+    if (!resubmitNotes.trim()) {
+      setResubmitError('Please provide a short explanation note describing the changes or answers for the Admin.');
+      return;
+    }
+
+    setResubmitLoading(true);
+    setResubmitError(null);
+
+    const res = await resubmitReferral(resubmitTarget.id, {
+      diagnosisDescription: resubmitDiagnosis,
+      telephoneNumber: resubmitPhone,
+      residentialAddress: resubmitAddress,
+      departmentAtExit: resubmitDepartment,
+      statusAtExit: resubmitStatusAtExit,
+      attachments: resubmitAttachments,
+      staffResponseNotes: resubmitNotes.trim()
+    });
+
+    setResubmitLoading(false);
+    if (res.success) {
+      setResubmitSuccess(true);
+      setTimeout(() => {
+        setResubmitTarget(null);
+        setResubmitSuccess(false);
+      }, 2000);
+    } else {
+      setResubmitError(res.message);
+    }
+  };
 
 
   // Format date helper (e.g., Oct 12, 2023)
@@ -55,7 +350,10 @@ export const MedicalHistory: React.FC = () => {
     ref.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ref.hospitalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     resolveProcedureType(ref.diagnosisDescription).toLowerCase().includes(searchQuery.toLowerCase()) ||
-    ref.status.toLowerCase().includes(searchQuery.toLowerCase())
+    ref.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (ref.staffIdNumber && ref.staffIdNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (ref.pensionId && ref.pensionId.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (ref.patientId && ref.patientId.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Status mapping for vertical progress timeline display inside modal
@@ -70,15 +368,442 @@ export const MedicalHistory: React.FC = () => {
 
   return (
     <div className="medical-history-wrapper flex flex-col gap-6 w-full fade-in">
-      {/* Header Info */}
-      <div className="header-section">
-        <h1 className="form-heading font-semibold text-xl" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>
-          Authorization & Treatment Archive
-        </h1>
-        <p className="text-muted text-sm" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-          Access your digital history of medical authorizations, administrative approval details, and clinical treatment reports in a unified table log.
-        </p>
-      </div>
+      {billReviewRef && billReviewRef.treatmentReport ? (
+        /* BENEFICIARY MEDICAL BILL REVIEW IN-PAGE VIEW (DARK THEME) */
+        <div className="beneficiary-bill-review-page fade-in flex flex-col gap-6 w-full" style={{ maxWidth: '1080px', margin: '0 auto', paddingBottom: '3rem' }}>
+          
+          {/* Top Bar Navigation & Status */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+            <button
+              type="button"
+              onClick={() => !billActionLoading && setBillReviewRef(null)}
+              disabled={billActionLoading}
+              className="btn btn-secondary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.5rem 1rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                borderRadius: '8px'
+              }}
+            >
+              <ArrowLeft size={16} />
+              <span>Back to History</span>
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.35rem 0.85rem',
+                  borderRadius: '9999px',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  backgroundColor: 'rgba(56, 189, 248, 0.12)',
+                  color: '#38bdf8',
+                  border: '1px solid rgba(56, 189, 248, 0.3)'
+                }}
+              >
+                <Receipt size={14} />
+                <span>Awaiting Beneficiary Endorsement</span>
+              </span>
+              <span className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Case #{billReviewRef.id}
+              </span>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+              Beneficiary Medical Bill Review &amp; Endorsement
+            </h1>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Accredited Facility: <strong style={{ color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.hospitalClinicName || billReviewRef.hospitalName}</strong> • Patient: <strong style={{ color: 'var(--text-primary)' }}>{billReviewRef.patientName || billReviewRef.staffName}</strong>
+            </p>
+          </div>
+
+          {/* Alert Messages */}
+          {billActionSuccess && (
+            <div style={{ padding: '1rem 1.25rem', borderRadius: '10px', backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10b981', color: '#34d399', display: 'flex', alignItems: 'center', gap: '0.65rem', fontSize: '0.9rem', fontWeight: 600 }}>
+              <CheckCircle size={20} style={{ color: '#10b981', flexShrink: 0 }} />
+              <span>{billActionSuccess}</span>
+            </div>
+          )}
+
+          {billActionError && (
+            <div style={{ padding: '1rem 1.25rem', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid #ef4444', color: '#f87171', display: 'flex', alignItems: 'center', gap: '0.65rem', fontSize: '0.9rem', fontWeight: 600 }}>
+              <AlertCircle size={20} style={{ color: '#ef4444', flexShrink: 0 }} />
+              <span>{billActionError}</span>
+            </div>
+          )}
+
+          {billReviewRef.treatmentReport.billStatus === 'REJECTED' && (
+            <div style={{ padding: '1rem 1.25rem', borderRadius: '10px', backgroundColor: 'rgba(245, 158, 11, 0.12)', border: '1px solid #f59e0b', color: '#fbbf24', fontSize: '0.875rem' }}>
+              <strong style={{ display: 'block', marginBottom: '0.35rem', fontWeight: 700 }}>⚠️ Previous Bill Dispute Details:</strong>
+              <p style={{ margin: 0, color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.billRejectionReason}</p>
+            </div>
+          )}
+
+          {/* CARD 1: CLINICAL OVERVIEW */}
+          <div style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.04em' }}>Hospital / Clinic</span>
+                <p style={{ margin: '0.25rem 0 0 0', fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.hospitalClinicName || billReviewRef.hospitalName}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.04em' }}>Care Classification</span>
+                <p style={{ margin: '0.25rem 0 0 0', fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.careType === 'OPD' ? 'OPD (Out-Patient)' : 'In-Patient Care'}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.04em' }}>Invoice / Bill Number</span>
+                <p style={{ margin: '0.25rem 0 0 0', fontWeight: 700, fontSize: '0.95rem', color: '#38bdf8', fontFamily: 'monospace' }}>{billReviewRef.treatmentReport.invoiceNo || 'N/A'}</p>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.04em' }}>Attending Physician</span>
+                <p style={{ margin: '0.25rem 0 0 0', fontWeight: 600, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.attendingDoctor || billReviewRef.treatmentReport.physicianName || 'N/A'}</p>
+              </div>
+            </div>
+
+            <div>
+              <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.04em' }}>Confirmed Clinical Findings / Diagnosis</span>
+              <div style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.85rem 1rem', fontSize: '0.875rem', color: 'var(--text-primary)', marginTop: '0.4rem', lineHeight: 1.5 }}>
+                {billReviewRef.treatmentReport.diagnosisConfirmed || 'Diagnosis confirmed upon admission.'}
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 2: SECTION D ITEMIZED BILLING BREAKDOWN */}
+          <div style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: '#38bdf8', fontWeight: 800, letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <Receipt size={16} />
+                Section D: Itemized Medical Bill Breakdown
+              </span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                All amounts certified in Nigerian Naira (₦)
+              </span>
+            </div>
+
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: 'rgba(255, 255, 255, 0.04)', borderBottom: '1px solid var(--border-color)' }}>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'center', width: '60px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>S/N</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'left', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Item / Service Description</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'center', width: '220px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Multiplier / Units</th>
+                      <th style={{ padding: '0.75rem 1rem', textAlign: 'right', width: '200px', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase' }}>Total Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { sn: 1, label: 'Registration / Administration Fee', multiplier: '-', amount: billReviewRef.treatmentReport.billingRegistration },
+                      { sn: 2, label: 'Professional Consultation Fee', multiplier: '-', amount: billReviewRef.treatmentReport.billingConsultation },
+                      { sn: 3, label: 'Bedding / Ward Accommodation', multiplier: billReviewRef.treatmentReport.billingBeddingDays ? `${billReviewRef.treatmentReport.billingBeddingDays} Days ${billReviewRef.treatmentReport.billingBeddingRate ? `@ ₦${billReviewRef.treatmentReport.billingBeddingRate.toLocaleString()}` : ''}` : 'Fixed Charge', amount: billReviewRef.treatmentReport.billingBeddingAmount },
+                      { sn: 4, label: 'Catering / Patient Feeding Services', multiplier: billReviewRef.treatmentReport.billingFeedingDays ? `${billReviewRef.treatmentReport.billingFeedingDays} Days ${billReviewRef.treatmentReport.billingFeedingRate ? `@ ₦${billReviewRef.treatmentReport.billingFeedingRate.toLocaleString()}` : ''}` : 'Fixed Charge', amount: billReviewRef.treatmentReport.billingFeedingAmount },
+                      { sn: 5, label: 'Prescribed Drugs, Injections & Medications', multiplier: '-', amount: billReviewRef.treatmentReport.billingDrugs },
+                      { sn: 6, label: 'Surgical Operation / Delivery Procedures', multiplier: '-', amount: billReviewRef.treatmentReport.billingSurgical },
+                      { sn: 7, label: 'Anesthetic Administration / Medications', multiplier: '-', amount: billReviewRef.treatmentReport.billingAnesthesia },
+                      { sn: 8, label: 'Operating Theater Facility Fees', multiplier: '-', amount: billReviewRef.treatmentReport.billingTheater },
+                      { sn: 9, label: 'Clinical Laboratory Diagnostics / Pathology', multiplier: '-', amount: billReviewRef.treatmentReport.billingLabs },
+                      { sn: 10, label: 'Imaging (E.C.G. / X-Rays / Ultrasound Scans)', multiplier: '-', amount: billReviewRef.treatmentReport.billingScans },
+                      { sn: 11, label: 'Blood Transfusion Services', multiplier: billReviewRef.treatmentReport.billingBloodPints ? `${billReviewRef.treatmentReport.billingBloodPints} Pints ${billReviewRef.treatmentReport.billingBloodRate ? `@ ₦${billReviewRef.treatmentReport.billingBloodRate.toLocaleString()}` : ''}` : 'Fixed Charge', amount: billReviewRef.treatmentReport.billingBloodAmount },
+                      { sn: 12, label: 'Intravenous Infusion / Drips', multiplier: billReviewRef.treatmentReport.billingInfusionPints ? `${billReviewRef.treatmentReport.billingInfusionPints} Pints ${billReviewRef.treatmentReport.billingInfusionRate ? `@ ₦${billReviewRef.treatmentReport.billingInfusionRate.toLocaleString()}` : ''}` : 'Fixed Charge', amount: billReviewRef.treatmentReport.billingInfusionAmount },
+                      { sn: 13, label: 'Physiotherapy & Rehabilitation Sessions', multiplier: '-', amount: billReviewRef.treatmentReport.billingPhysiotherapy },
+                      { sn: 14, label: 'Specialized Neonatal Care / Incubator', multiplier: '-', amount: billReviewRef.treatmentReport.billingNeonatal },
+                      { sn: 15, label: 'Miscellaneous Charges / Other Disposables', multiplier: '-', amount: billReviewRef.treatmentReport.billingMiscellaneous },
+                    ]
+                      .filter(item => Boolean(item.amount && item.amount > 0))
+                      .map((item, idx) => (
+                        <tr key={item.sn} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                          <td style={{ textAlign: 'center', padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>{idx + 1}</td>
+                          <td style={{ padding: '0.75rem 1rem', color: 'var(--text-primary)', fontWeight: 600 }}>{item.label}</td>
+                          <td style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{item.multiplier}</td>
+                          <td style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, fontFamily: 'monospace', color: '#38bdf8' }}>
+                            ₦{item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))}
+
+                    {/* Grand Total Row */}
+                    <tr style={{ backgroundColor: 'rgba(56, 189, 248, 0.05)', borderTop: '2px solid var(--border-color)' }}>
+                      <td colSpan={3} style={{ padding: '1rem', textAlign: 'right', fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)', letterSpacing: '0.02em' }}>
+                        TOTAL INVOICE PAYABLE:
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right', fontFamily: 'monospace', fontSize: '1.25rem', fontWeight: 900, color: '#38bdf8' }}>
+                        ₦{(billReviewRef.treatmentReport.billingTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 3: PROVIDER SIGNATURE VERIFICATIONS */}
+          <div style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', boxShadow: 'var(--shadow-sm)' }}>
+            <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 800, letterSpacing: '0.04em' }}>
+              Provider Verification Signatures
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
+              {/* Doctor */}
+              <div style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem' }}>
+                <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Attending Physician</span>
+                <div style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0f19', border: '1px solid var(--border-color)', borderRadius: '6px', marginTop: '0.5rem' }}>
+                  {billReviewRef.treatmentReport.doctorSignatureImage ? (
+                    <img src={billReviewRef.treatmentReport.doctorSignatureImage} alt="Doctor Signature" style={{ maxHeight: '44px', maxWidth: '90%', objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#38bdf8' }}>{billReviewRef.treatmentReport.attendingDoctor || billReviewRef.treatmentReport.physicianName || 'Signed'}</span>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.35rem', display: 'block' }}>Signed: {billReviewRef.treatmentReport.doctorSignDate || 'N/A'}</span>
+              </div>
+
+              {/* Branch Controller */}
+              <div style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem' }}>
+                <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Branch Controller</span>
+                <div style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0f19', border: '1px solid var(--border-color)', borderRadius: '6px', marginTop: '0.5rem' }}>
+                  {billReviewRef.treatmentReport.branchControllerSignatureImage ? (
+                    <img src={billReviewRef.treatmentReport.branchControllerSignatureImage} alt="Branch Controller Signature" style={{ maxHeight: '44px', maxWidth: '90%', objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.branchControllerSignName || 'Endorsed'}</span>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.35rem', display: 'block' }}>{billReviewRef.treatmentReport.branchControllerSignName || 'Branch Controller'}</span>
+              </div>
+
+              {/* Branch Support */}
+              <div style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem' }}>
+                <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Branch Support Officer</span>
+                <div style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0f19', border: '1px solid var(--border-color)', borderRadius: '6px', marginTop: '0.5rem' }}>
+                  {billReviewRef.treatmentReport.branchSupportSignatureImage ? (
+                    <img src={billReviewRef.treatmentReport.branchSupportSignatureImage} alt="Branch Support Signature" style={{ maxHeight: '44px', maxWidth: '90%', objectFit: 'contain' }} />
+                  ) : (
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.branchSupportSignName || 'Endorsed'}</span>
+                  )}
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.35rem', display: 'block' }}>{billReviewRef.treatmentReport.branchSupportSignName || 'Branch Support Officer'}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* CARD 4: BENEFICIARY ACCEPTANCE / DISPUTE INTERACTIVE PANEL */}
+          <div style={{ backgroundColor: 'var(--bg-secondary)', border: '1.5px solid rgba(56, 189, 248, 0.4)', borderRadius: '12px', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '8px', backgroundColor: 'rgba(56, 189, 248, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#38bdf8' }}>
+                <PenTool size={20} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                  Beneficiary Acceptance &amp; Endorsement
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  Review itemized charges and certify your endorsement or lodge a dispute
+                </span>
+              </div>
+            </div>
+
+            {isRejectingBill ? (
+              /* DISPUTE / REJECTION FORM */
+              <form onSubmit={handleRejectBill} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ padding: '1rem', backgroundColor: 'rgba(239, 68, 68, 0.12)', border: '1px solid #ef4444', borderRadius: '8px', fontSize: '0.85rem', color: '#f87171', lineHeight: 1.5 }}>
+                  <strong style={{ color: '#ffffff' }}>Dispute Explanation Required:</strong> Please describe the discrepancy (e.g. incorrect bed days, procedures not performed, or wrong billing). This explanation will be sent directly back to the hospital so they can correct and resubmit the invoice.
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    Reason for Disputing / Rejecting Medical Bill <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    required
+                    value={billRejectReason}
+                    onChange={e => setBillRejectReason(e.target.value)}
+                    placeholder="e.g. I was only admitted for 2 days rather than 5 days, and did not undergo the surgical procedure listed..."
+                    style={{ padding: '0.85rem', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none', lineHeight: 1.5 }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsRejectingBill(false)}
+                    disabled={billActionLoading}
+                    className="btn btn-secondary"
+                    style={{ fontSize: '0.85rem' }}
+                  >
+                    Cancel Dispute
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={billActionLoading}
+                    className="btn btn-primary"
+                    style={{ backgroundColor: '#ef4444', borderColor: '#ef4444', fontSize: '0.85rem', fontWeight: 700 }}
+                  >
+                    {billActionLoading ? 'Submitting Dispute...' : 'Confirm & Send Dispute to Hospital'}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* APPROVAL FORM */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.5, backgroundColor: 'rgba(255, 255, 255, 0.02)', padding: '0.85rem 1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  I certify that the treatment, services, and medications listed above were duly administered to me (or my registered dependant) by the accredited hospital.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                  {/* Name confirmation */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Beneficiary Confirmation Name
+                    </label>
+                    <input
+                      type="text"
+                      value={patientConfirmName}
+                      onChange={e => setPatientConfirmName(e.target.value)}
+                      placeholder="Full beneficiary name"
+                      style={{
+                        padding: '0.7rem 0.85rem',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.9rem',
+                        fontWeight: 600,
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+
+                  {/* Digital signature */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                        Beneficiary Digital Signature
+                      </label>
+                      {patientSignatureImage && (
+                        <button
+                          type="button"
+                          onClick={() => setPatientSignatureImage('')}
+                          style={{ background: 'transparent', border: 'none', color: '#ef4444', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+                        >
+                          Clear Signature
+                        </button>
+                      )}
+                    </div>
+
+                    {patientSignatureImage ? (
+                      <div style={{ height: '54px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: '#0b0f19', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem' }}>
+                        <img src={patientSignatureImage} alt="Patient Signature" style={{ maxHeight: '46px', maxWidth: '100%', objectFit: 'contain' }} />
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowPatientSignModal(true)}
+                        style={{
+                          height: '54px',
+                          border: '2px dashed var(--border-color)',
+                          borderRadius: '8px',
+                          backgroundColor: 'var(--bg-primary)',
+                          color: '#38bdf8',
+                          fontWeight: 700,
+                          fontSize: '0.85rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.5rem',
+                          cursor: 'pointer',
+                          transition: 'border-color 0.2s, background-color 0.2s'
+                        }}
+                      >
+                        <PenTool size={16} />
+                        <span>Draw Signature on Screen</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Controls */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsRejectingBill(true)}
+                    disabled={billActionLoading}
+                    style={{
+                      padding: '0.65rem 1.25rem',
+                      borderRadius: '8px',
+                      border: '1px solid #ef4444',
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      color: '#ef4444',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.45rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <AlertTriangle size={16} />
+                    <span>Dispute / Reject Bill</span>
+                  </button>
+
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setBillReviewRef(null)}
+                      disabled={billActionLoading}
+                      className="btn btn-secondary"
+                      style={{ fontSize: '0.85rem', padding: '0.65rem 1.25rem', borderRadius: '8px' }}
+                    >
+                      Back to Archive
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleApproveBill}
+                      disabled={billActionLoading}
+                      className="btn btn-primary"
+                      style={{
+                        background: 'linear-gradient(135deg, #10b981, #059669)',
+                        borderColor: '#10b981',
+                        fontSize: '0.9rem',
+                        fontWeight: 800,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.65rem 1.5rem',
+                        borderRadius: '8px',
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                      }}
+                    >
+                      <CheckCircle size={18} />
+                      <span>{billActionLoading ? 'Processing Approval...' : 'Approve & Sign Medical Bill'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Header Info */}
+          <div className="header-section">
+            <h1 className="form-heading font-semibold text-xl" style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>
+              Authorization &amp; Treatment Archive
+            </h1>
+            <p className="text-muted text-sm" style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+              Access your digital history of medical authorizations, administrative approval details, and clinical treatment reports in a unified table log.
+            </p>
+          </div>
 
       {/* Live Search & Filter Bar */}
       <div className="filter-search-bar flex justify-between align-center" style={{ display: 'flex', gap: '1rem', width: '100%', alignItems: 'center' }}>
@@ -153,16 +878,75 @@ export const MedicalHistory: React.FC = () => {
                       <Badge status={ref.status} />
                     </td>
                     <td style={{ padding: '1rem 1.25rem', fontSize: '0.825rem', textAlign: 'right' }}>
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCase(ref);
-                        }}
-                        className="btn btn-secondary btn-sm"
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px' }}
-                      >
-                        View File
-                      </button>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', alignItems: 'center' }}>
+                        {ref.status === 'BILL_SUBMITTED' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openBillReview(ref);
+                            }}
+                            className="btn btn-primary btn-sm animate-pulse"
+                            style={{
+                              padding: '0.35rem 0.75rem',
+                              fontSize: '0.725rem',
+                              fontWeight: 800,
+                              borderRadius: '6px',
+                              backgroundColor: '#005f73',
+                              borderColor: '#005f73',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.35rem'
+                            }}
+                          >
+                            <Receipt size={13} />
+                            <span>Review &amp; Approve Bill</span>
+                          </button>
+                        )}
+                        {ref.status === 'BILL_REJECTED' && (
+                          <span
+                            className="badge badge-danger"
+                            style={{ fontSize: '0.7rem', padding: '0.3rem 0.55rem', cursor: 'help' }}
+                            title={`Disputed: ${ref.treatmentReport?.billRejectionReason || 'Pending hospital revision'}`}
+                          >
+                            Disputed (Awaiting Revision)
+                          </span>
+                        )}
+                        {ref.status === 'INFO_REQUESTED' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openResubmitModal(ref);
+                            }}
+                            className="btn btn-primary btn-sm"
+                            style={{
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.725rem',
+                              fontWeight: 700,
+                              borderRadius: '6px',
+                              backgroundColor: '#d97706',
+                              borderColor: '#d97706',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.3rem'
+                            }}
+                          >
+                            <Edit3 size={12} />
+                            <span>Respond</span>
+                          </button>
+                        )}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCase(ref);
+                          }}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px' }}
+                        >
+                          View File
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -197,6 +981,32 @@ export const MedicalHistory: React.FC = () => {
                   </div>
                 </div>
 
+                {ref.status === 'BILL_SUBMITTED' && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openBillReview(ref);
+                    }}
+                    className="w-full bg-[#005f73] hover:bg-[#005f73]/90 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-sm mt-1 animate-pulse"
+                  >
+                    <Receipt size={14} />
+                    <span>Action Required: Review &amp; Approve Bill</span>
+                  </button>
+                )}
+
+                {ref.status === 'INFO_REQUESTED' && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openResubmitModal(ref);
+                    }}
+                    className="w-full bg-[#d97706] hover:bg-[#d97706]/90 text-white font-bold py-2 px-3 rounded-lg text-xs flex items-center justify-center gap-1.5 shadow-sm mt-1"
+                  >
+                    <Edit3 size={14} />
+                    <span>Action Required: Provide Information &amp; Resubmit</span>
+                  </button>
+                )}
+
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
@@ -211,6 +1021,8 @@ export const MedicalHistory: React.FC = () => {
           </div>
         </>
       )}
+    </>
+  )}
 
       {/* Premium Case Details File Modal */}
       {selectedCase && createPortal(
@@ -244,7 +1056,9 @@ export const MedicalHistory: React.FC = () => {
                     <User size={14} className="value-inline-icon" />
                     {selectedCase.patientName || selectedCase.staffName}
                   </span>
-                  <span className="brief-subtext">Pension ID: {selectedCase.pensionId || 'N/A'}</span>
+                  <span className="brief-subtext">
+                    {getReferralIdInfo(selectedCase).idLabel}: {getReferralIdInfo(selectedCase).idValue}
+                  </span>
                 </div>
                 <div className="brief-column align-right">
                   <span className="brief-label">Assigned Facility</span>
@@ -255,6 +1069,87 @@ export const MedicalHistory: React.FC = () => {
                   <span className="brief-subtext">Requested: {formatDateString(selectedCase.createdAt)}</span>
                 </div>
               </div>
+
+              {/* ADMIN CLARIFICATION / CHANGES REQUESTED CALLOUT */}
+              {selectedCase.status === 'INFO_REQUESTED' && (
+                <div style={{
+                  backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                  border: '1.5px solid #f59e0b',
+                  borderRadius: '10px',
+                  padding: '1.15rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.75rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#d97706' }}>
+                      <AlertCircle size={18} />
+                      <span style={{ fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Action Required: Admin Requested Clarification / Changes
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => openResubmitModal(selectedCase)}
+                      className="btn btn-primary btn-sm"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        padding: '0.45rem 1rem',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        backgroundColor: '#d97706',
+                        borderColor: '#d97706',
+                        borderRadius: '6px'
+                      }}
+                    >
+                      <Edit3 size={14} />
+                      <span>Edit &amp; Resubmit Request</span>
+                    </button>
+                  </div>
+                  <div style={{
+                    backgroundColor: 'var(--bg-primary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    padding: '0.85rem 1rem',
+                    fontSize: '0.875rem',
+                    color: 'var(--text-primary)',
+                    lineHeight: 1.5
+                  }}>
+                    <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#d97706', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                      Admin Instructions &amp; Information Needed:
+                    </span>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+                      "{selectedCase.moreInfoRequestedNotes || selectedCase.adminNotes || 'Please provide updated documentation or clarify your clinical request details.'}"
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Previously Resubmitted Banner */}
+              {selectedCase.isResubmitted && selectedCase.staffResponseNotes && (
+                <div style={{
+                  backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                  border: '1px solid #3b82f6',
+                  borderRadius: '8px',
+                  padding: '0.85rem 1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.35rem',
+                  marginBottom: '1rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#2563eb' }}>
+                    <CheckCircle2 size={15} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>
+                      Resubmitted with Updates {selectedCase.resubmittedAt ? `• ${formatDateString(selectedCase.resubmittedAt)}` : ''}
+                    </span>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    <strong style={{ color: 'var(--text-primary)' }}>Your Note to Admin:</strong> "{selectedCase.staffResponseNotes}"
+                  </p>
+                </div>
+              )}
 
               {/* Status and Urgency Badge summary */}
               <div className="brief-summary-row">
@@ -397,7 +1292,43 @@ export const MedicalHistory: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="history-modal-footer">
+            <div className="history-modal-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                {selectedCase.status === 'BILL_SUBMITTED' && (
+                  <button
+                    onClick={() => openBillReview(selectedCase)}
+                    className="btn btn-primary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      backgroundColor: '#005f73',
+                      borderColor: '#005f73',
+                      fontWeight: 700
+                    }}
+                  >
+                    <Receipt size={15} />
+                    <span>Review &amp; Approve Medical Bill</span>
+                  </button>
+                )}
+                {selectedCase.status === 'INFO_REQUESTED' && (
+                  <button
+                    onClick={() => openResubmitModal(selectedCase)}
+                    className="btn btn-primary"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      backgroundColor: '#d97706',
+                      borderColor: '#d97706',
+                      fontWeight: 700
+                    }}
+                  >
+                    <Edit3 size={15} />
+                    <span>Edit &amp; Resubmit Request</span>
+                  </button>
+                )}
+              </div>
               <button onClick={() => setSelectedCase(null)} className="btn btn-secondary">
                 Close Case File
               </button>
@@ -532,7 +1463,15 @@ export const MedicalHistory: React.FC = () => {
                       <div className="signature-box" style={{ flex: 2 }}>
                         <span className="paper-label" style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#475569', textTransform: 'uppercase', marginBottom: '0.25rem' }}>DOCTOR'S DIGITAL SIGNATURE</span>
                         <div className="signature-check-wrapper checked" style={{ height: '48px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}>
-                          <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '2.2rem', color: '#1e3a8a', lineHeight: 1 }}>{showDetailedReport.treatmentReport.attendingDoctor || showDetailedReport.treatmentReport.physicianName}</span>
+                          {showDetailedReport.treatmentReport.doctorSignatureImage ? (
+                            <img
+                              src={showDetailedReport.treatmentReport.doctorSignatureImage}
+                              alt="Doctor Signature"
+                              style={{ maxHeight: '44px', maxWidth: '100%', objectFit: 'contain' }}
+                            />
+                          ) : (
+                            <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '2.2rem', color: '#1e3a8a', lineHeight: 1 }}>{showDetailedReport.treatmentReport.attendingDoctor || showDetailedReport.treatmentReport.physicianName}</span>
+                          )}
                         </div>
                       </div>
 
@@ -545,6 +1484,69 @@ export const MedicalHistory: React.FC = () => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Branch Controller & Branch Support Endorsements */}
+                    {(showDetailedReport.treatmentReport.branchControllerSignatureImage || showDetailedReport.treatmentReport.branchControllerSignName || showDetailedReport.treatmentReport.branchSupportSignatureImage || showDetailedReport.treatmentReport.branchSupportSignName) && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                        {/* Branch Controller */}
+                        <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                          <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#005f73', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                            BRANCH CONTROLLER ENDORSEMENT
+                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Name: </span>
+                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{showDetailedReport.treatmentReport.branchControllerSignName || 'Branch Controller'}</strong>
+                            </div>
+                            <div style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
+                              {showDetailedReport.treatmentReport.branchControllerSignatureImage ? (
+                                <img
+                                  src={showDetailedReport.treatmentReport.branchControllerSignatureImage}
+                                  alt="Branch Controller Signature"
+                                  style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{showDetailedReport.treatmentReport.branchControllerSignName || 'Endorsed'}</span>
+                              )}
+                            </div>
+                            {showDetailedReport.treatmentReport.branchControllerSignDate && (
+                              <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                                Endorsed: {new Date(showDetailedReport.treatmentReport.branchControllerSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Branch Support */}
+                        <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
+                          <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#005f73', textTransform: 'uppercase', marginBottom: '0.35rem' }}>
+                            BRANCH SUPPORT ENDORSEMENT
+                          </span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                            <div>
+                              <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Name: </span>
+                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{showDetailedReport.treatmentReport.branchSupportSignName || 'Branch Support Officer'}</strong>
+                            </div>
+                            <div style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
+                              {showDetailedReport.treatmentReport.branchSupportSignatureImage ? (
+                                <img
+                                  src={showDetailedReport.treatmentReport.branchSupportSignatureImage}
+                                  alt="Branch Support Signature"
+                                  style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain' }}
+                                />
+                              ) : (
+                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{showDetailedReport.treatmentReport.branchSupportSignName || 'Endorsed'}</span>
+                              )}
+                            </div>
+                            {showDetailedReport.treatmentReport.branchSupportSignDate && (
+                              <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
+                                Endorsed: {new Date(showDetailedReport.treatmentReport.branchSupportSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* SECTION D BILLING SUMMARY */}
@@ -722,7 +1724,15 @@ export const MedicalHistory: React.FC = () => {
                       <div className="signature-box" style={{ flex: 2 }}>
                         <span className="paper-label" style={{ display: 'block', fontSize: '0.7rem', fontWeight: 750, color: '#475569', textTransform: 'uppercase', marginBottom: '0.25rem' }}>PATIENT'S DIGITAL SIGNATURE</span>
                         <div className="signature-check-wrapper checked patient-sig" style={{ height: '48px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '4px' }}>
-                          <span style={{ fontFamily: "'Reenie Beanie', cursive", fontSize: '1.8rem', color: '#0f172a', lineHeight: 1 }}>{showDetailedReport.treatmentReport.confirmedByPatientName || showDetailedReport.patientName || showDetailedReport.staffName}</span>
+                          {showDetailedReport.treatmentReport.patientSignatureImage ? (
+                            <img
+                              src={showDetailedReport.treatmentReport.patientSignatureImage}
+                              alt="Patient Digital Signature"
+                              style={{ maxHeight: '44px', maxWidth: '100%', objectFit: 'contain' }}
+                            />
+                          ) : (
+                            <span style={{ fontFamily: "'Reenie Beanie', cursive", fontSize: '1.8rem', color: '#0f172a', lineHeight: 1 }}>{showDetailedReport.treatmentReport.confirmedByPatientName || showDetailedReport.patientName || showDetailedReport.staffName}</span>
+                          )}
                         </div>
                       </div>
 
@@ -766,6 +1776,345 @@ export const MedicalHistory: React.FC = () => {
               >
                 Return to Case File
               </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+
+
+      {showPatientSignModal && (
+        <SignaturePadModal
+          title="Sign to Endorse Medical Bill"
+          onSave={dataUrl => setPatientSignatureImage(dataUrl)}
+          onClose={() => setShowPatientSignModal(false)}
+        />
+      )}
+
+      {/* EDIT & RESUBMIT REFERRAL MODAL */}
+      {resubmitTarget && createPortal(
+        <div className="history-modal-overlay" style={{ zIndex: 1150 }} onClick={() => !resubmitLoading && setResubmitTarget(null)}>
+          <div className="history-modal-container fade-in" style={{ maxWidth: '680px', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="history-modal-header" style={{ borderBottom: '1px solid var(--border-color)', padding: '1.25rem 1.5rem', flexShrink: 0 }}>
+              <div className="header-title-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div className="modal-icon-badge" style={{ backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#d97706', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Edit3 size={20} />
+                </div>
+                <div>
+                  <h3 className="header-main-title" style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                    Provide Clarification &amp; Resubmit Request
+                  </h3>
+                  <span className="header-case-id font-mono text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Reference: {resubmitTarget.id} • {resubmitTarget.hospitalName}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="modal-close-trigger"
+                onClick={() => !resubmitLoading && setResubmitTarget(null)}
+                disabled={resubmitLoading}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="history-modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', overflowY: 'auto' }}>
+              
+              {resubmitSuccess ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <CheckCircle2 size={36} />
+                  </div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                    Request Resubmitted Successfully!
+                  </h3>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: '420px', margin: 0 }}>
+                    Your updated information and clarification note have been forwarded directly to the Super Admin for review.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleResubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  
+                  {/* Admin Request Notice Callout */}
+                  <div style={{
+                    backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                    border: '1.5px solid #f59e0b',
+                    borderRadius: '8px',
+                    padding: '1rem'
+                  }}>
+                    <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.25rem' }}>
+                      Admin's Clarification Request:
+                    </span>
+                    <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                      "{resubmitTarget.moreInfoRequestedNotes || resubmitTarget.adminNotes || 'Please provide updated documentation or clarify clinical details.'}"
+                    </p>
+                  </div>
+
+                  {resubmitError && (
+                    <div style={{
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                      border: '1px solid #ef4444',
+                      color: '#ef4444',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '8px',
+                      fontSize: '0.825rem',
+                      fontWeight: 600,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}>
+                      <AlertCircle size={16} />
+                      <span>{resubmitError}</span>
+                    </div>
+                  )}
+
+                  {/* Required Response Note */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.775rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Your Response / Notes to Admin <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={resubmitNotes}
+                      onChange={e => setResubmitNotes(e.target.value)}
+                      placeholder="Explain the changes made, answers to questions, or additional documents uploaded..."
+                      disabled={resubmitLoading}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        border: '1.5px solid var(--border-color)',
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        lineHeight: 1.4
+                      }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      This message will be highlighted directly on the Super Admin's review console.
+                    </span>
+                  </div>
+
+                  {/* Clinical Indication / Narrative */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    <label style={{ fontSize: '0.775rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      Clinical Indication / Diagnosis Details
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={resubmitDiagnosis}
+                      onChange={e => setResubmitDiagnosis(e.target.value)}
+                      placeholder="Update or clarify symptoms, diagnosis, or hospital referral details..."
+                      disabled={resubmitLoading}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        borderRadius: '8px',
+                        border: '1.5px solid var(--border-color)',
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.85rem',
+                        outline: 'none',
+                        lineHeight: 1.4
+                      }}
+                    />
+                  </div>
+
+                  {/* Contact & Demographics Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                        Contact Phone No.
+                      </label>
+                      <input
+                        type="tel"
+                        value={resubmitPhone}
+                        onChange={e => setResubmitPhone(e.target.value)}
+                        disabled={resubmitLoading}
+                        style={{
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-primary)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.85rem'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                        Status at Exit / GL
+                      </label>
+                      <input
+                        type="text"
+                        value={resubmitStatusAtExit}
+                        onChange={e => setResubmitStatusAtExit(e.target.value)}
+                        disabled={resubmitLoading}
+                        style={{
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-primary)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.85rem'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <label style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                        Department at Exit
+                      </label>
+                      <input
+                        type="text"
+                        value={resubmitDepartment}
+                        onChange={e => setResubmitDepartment(e.target.value)}
+                        disabled={resubmitLoading}
+                        style={{
+                          padding: '0.6rem 0.75rem',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border-color)',
+                          backgroundColor: 'var(--bg-primary)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.85rem'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Residential Address */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                    <label style={{ fontSize: '0.725rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                      Residential Address
+                    </label>
+                    <input
+                      type="text"
+                      value={resubmitAddress}
+                      onChange={e => setResubmitAddress(e.target.value)}
+                      disabled={resubmitLoading}
+                      style={{
+                        padding: '0.6rem 0.75rem',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border-color)',
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.85rem'
+                      }}
+                    />
+                  </div>
+
+                  {/* Attached Documents & Scans */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.775rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                        Medical Scans &amp; Attached Files ({resubmitAttachments.length})
+                      </label>
+                      <label style={{
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: '#005f73',
+                        padding: '0.3rem 0.6rem',
+                        borderRadius: '6px',
+                        border: '1px dashed #005f73'
+                      }}>
+                        <Upload size={12} />
+                        <span>Add Document</span>
+                        <input
+                          type="file"
+                          onChange={handleAddAttachment}
+                          disabled={resubmitLoading}
+                          style={{ display: 'none' }}
+                          accept=".pdf,.png,.jpg,.jpeg"
+                        />
+                      </label>
+                    </div>
+
+                    {resubmitAttachments.length === 0 ? (
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                        No files currently attached. Click "Add Document" above if requested to provide scans.
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        {resubmitAttachments.map((f, i) => (
+                          <div key={i} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '0.5rem 0.75rem',
+                            backgroundColor: 'var(--bg-secondary)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem'
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <FileText size={14} style={{ color: '#005f73' }} />
+                              <span style={{ fontWeight: 600 }}>{f.name}</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.725rem' }}>({f.size})</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveAttachment(i)}
+                              disabled={resubmitLoading}
+                              style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                              title="Remove File"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Modal Footer Actions */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setResubmitTarget(null)}
+                      disabled={resubmitLoading}
+                      className="btn btn-secondary"
+                      style={{ padding: '0.55rem 1.25rem', fontSize: '0.85rem' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={resubmitLoading}
+                      className="btn btn-primary"
+                      style={{
+                        padding: '0.55rem 1.5rem',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        backgroundColor: '#005f73',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}
+                    >
+                      {resubmitLoading ? (
+                        <span>Resubmitting...</span>
+                      ) : (
+                        <>
+                          <Send size={15} />
+                          <span>Resubmit Request to Admin</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>,

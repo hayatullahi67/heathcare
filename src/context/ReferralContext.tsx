@@ -24,6 +24,9 @@ interface ReferralContextType {
       branchCenter?: string;
       residentialAddress?: string;
       isSigned?: boolean;
+      patientId?: string;
+      pensionId?: string;
+      staffIdNumber?: string;
     }
   ) => Promise<{ success: boolean; message: string }>;
   updateReferralStatus: (
@@ -31,10 +34,34 @@ interface ReferralContextType {
     status: ReferralStatus,
     notes?: { adminNotes?: string; moreInfoNotes?: string }
   ) => Promise<{ success: boolean; message: string }>;
+  resubmitReferral: (
+    referralId: string,
+    updatedData: {
+      diagnosisDescription?: string;
+      telephoneNumber?: string;
+      residentialAddress?: string;
+      departmentAtExit?: string;
+      statusAtExit?: string;
+      attachments?: MockFile[];
+      staffResponseNotes: string;
+    }
+  ) => Promise<{ success: boolean; message: string }>;
   acceptReferral: (referralId: string) => Promise<{ success: boolean; message: string }>;
   completeTreatment: (
     referralId: string,
     report: Omit<TreatmentReport, 'id' | 'completedAt'>
+  ) => Promise<{ success: boolean; message: string }>;
+  approveMedicalBill: (
+    referralId: string,
+    options?: { patientSignatureImage?: string; confirmedName?: string }
+  ) => Promise<{ success: boolean; message: string }>;
+  rejectMedicalBill: (
+    referralId: string,
+    rejectionReason: string
+  ) => Promise<{ success: boolean; message: string }>;
+  resubmitMedicalBill: (
+    referralId: string,
+    updatedReport: Partial<TreatmentReport>
   ) => Promise<{ success: boolean; message: string }>;
   declineReferral: (referralId: string, reason: string) => Promise<{ success: boolean; message: string }>;
   addProgressNote: (referralId: string, note: string, loggedBy: string) => Promise<{ success: boolean; message: string }>;
@@ -50,11 +77,18 @@ interface ReferralContextType {
   logActivity: (action: string, details: string, customUser?: { id: string; name: string; role: any }) => void;
 }
 
-// Helper to recursively strip undefined values for Firestore compatibility
+// Helper to recursively strip undefined values and non-POJO entities for Firestore compatibility
 const cleanFirestoreData = (val: any): any => {
   if (val === undefined || val === null) return null;
   if (Array.isArray(val)) return val.map(cleanFirestoreData);
   if (typeof val === 'object') {
+    // If it's a browser File or Blob instance, convert to plain metadata object
+    if (typeof File !== 'undefined' && val instanceof File) {
+      return { name: val.name, size: `${(val.size / (1024 * 1024)).toFixed(1)} MB`, type: val.type };
+    }
+    if (typeof Blob !== 'undefined' && val instanceof Blob) {
+      return { size: val.size, type: val.type };
+    }
     const cleaned: any = {};
     Object.entries(val).forEach(([k, v]) => {
       if (v !== undefined) {
@@ -178,6 +212,9 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       branchCenter?: string;
       residentialAddress?: string;
       isSigned?: boolean;
+      patientId?: string;
+      pensionId?: string;
+      staffIdNumber?: string;
     }
   ): Promise<{ success: boolean; message: string }> => {
     if (!currentUser || !['RETIRED_STAFF', 'STAFF'].includes(currentUser.role)) {
@@ -186,11 +223,23 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     await new Promise(resolve => setTimeout(resolve, 800));
 
+    const isStaff = currentUser.role === 'STAFF';
+    const finalPatientId = cbnFields?.patientId?.trim() || '';
+
+    // For Retired Staff: prioritize inputted pensionId or patientId, fallback to currentUser.pensionId
+    const finalPensionId = !isStaff
+      ? (cbnFields?.pensionId?.trim() || finalPatientId || currentUser.pensionId || '')
+      : undefined;
+
+    // For Active Staff: prioritize inputted staffIdNumber or patientId, fallback to currentUser.staffIdNumber or currentUser.pensionId
+    const finalStaffIdNumber = isStaff
+      ? (cbnFields?.staffIdNumber?.trim() || finalPatientId || currentUser.staffIdNumber || currentUser.pensionId || '')
+      : undefined;
+
     const newReferral: ReferralRequest = {
       id: `ref-${100 + referrals.length + 1}`,
       staffId: currentUser.id,
       staffName: currentUser.name,
-      pensionId: currentUser.pensionId,
       hospitalId,
       hospitalName,
       diagnosisDescription,
@@ -199,7 +248,11 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       status: 'PENDING_ADMIN',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      ...cbnFields
+      ...cbnFields,
+      pensionId: finalPensionId,
+      staffIdNumber: finalStaffIdNumber,
+      patientId: finalPatientId || (isStaff ? finalStaffIdNumber : finalPensionId),
+      requesterRole: currentUser.role
     };
 
     try {
@@ -252,6 +305,7 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
     if (notes?.moreInfoNotes !== undefined) {
       updatedRef.moreInfoRequestedNotes = notes.moreInfoNotes;
+      updatedRef.isResubmitted = false;
     }
 
     try {
@@ -303,6 +357,67 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {
       console.error("Error updating status in Firestore:", e);
       return { success: false, message: 'Failed to update referral in database.' };
+    }
+  };
+
+  const resubmitReferral = async (
+    referralId: string,
+    updatedData: {
+      diagnosisDescription?: string;
+      telephoneNumber?: string;
+      residentialAddress?: string;
+      departmentAtExit?: string;
+      statusAtExit?: string;
+      attachments?: MockFile[];
+      staffResponseNotes: string;
+    }
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) {
+      return { success: false, message: 'Authentication required to resubmit referral.' };
+    }
+
+    const refObj = referrals.find(r => r.id === referralId);
+    if (!refObj) {
+      return { success: false, message: 'Referral request not found.' };
+    }
+
+    const now = new Date().toISOString();
+    const updatedRef: ReferralRequest = {
+      ...refObj,
+      status: 'PENDING_ADMIN',
+      isResubmitted: true,
+      resubmittedAt: now,
+      updatedAt: now,
+      staffResponseNotes: updatedData.staffResponseNotes,
+      diagnosisDescription: updatedData.diagnosisDescription ?? refObj.diagnosisDescription,
+      telephoneNumber: updatedData.telephoneNumber ?? refObj.telephoneNumber,
+      residentialAddress: updatedData.residentialAddress ?? refObj.residentialAddress,
+      departmentAtExit: updatedData.departmentAtExit ?? refObj.departmentAtExit,
+      statusAtExit: updatedData.statusAtExit ?? refObj.statusAtExit,
+      attachments: updatedData.attachments ?? refObj.attachments
+    };
+
+    try {
+      await setDoc(doc(db, 'referrals', referralId), cleanFirestoreData(updatedRef));
+
+      // Notify Super Admin
+      await addNotification(
+        'usr-admin',
+        'Referral Request Resubmitted',
+        `${currentUser.name} has provided updated information for referral ${refObj.id}.`,
+        refObj.id
+      );
+
+      const patientName = refObj.patientName || refObj.staffName;
+      logActivity(
+        'RESUBMIT_REFERRAL',
+        `Resubmitted referral ${referralId} for patient ${patientName} with updated information. Response: "${updatedData.staffResponseNotes}"`
+      );
+
+      return { success: true, message: 'Referral successfully resubmitted to Administrator.' };
+    } catch (e) {
+      console.error("Error resubmitting referral in Firestore:", e);
+      return { success: false, message: 'Failed to resubmit referral in database.' };
     }
   };
 
@@ -370,12 +485,13 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const finalReport: TreatmentReport = {
       ...report,
       id: `rep-${Date.now()}`,
-      completedAt: new Date().toISOString()
+      completedAt: new Date().toISOString(),
+      billStatus: 'PENDING_BENEFICIARY'
     };
 
     const updatedRef = {
       ...refObj,
-      status: 'TREATMENT_COMPLETED' as ReferralStatus,
+      status: 'BILL_SUBMITTED' as ReferralStatus,
       treatmentReport: finalReport,
       updatedAt: new Date().toISOString()
     };
@@ -386,25 +502,203 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       // Notify Staff
       await addNotification(
         refObj.staffId,
-        'Treatment Completed',
-        `${refObj.hospitalName} has completed your treatment and uploaded the medical report.`,
+        'Medical Bill Ready for Review',
+        `${refObj.hospitalName} has completed your clinical treatment and submitted a medical bill of ₦${(finalReport.billingTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}. Please review and approve or reject.`,
         refObj.id
       );
       // Notify Admin
       await addNotification(
         'usr-admin',
-        'Treatment Completed & Report Uploaded',
-        `${refObj.hospitalName} has completed treatment for ${refObj.staffName}.`,
+        'Treatment Completed & Bill Submitted',
+        `${refObj.hospitalName} completed treatment and submitted a medical bill (₦${(finalReport.billingTotal || 0).toLocaleString()}) for ${refObj.staffName}. Awaiting beneficiary review.`,
         refObj.id
       );
 
       const refDetailsName = refObj.patientName || refObj.staffName;
-      logActivity('COMPLETE_TREATMENT', `Submitted discharge report, final billing invoice, and marked treatment completed for referral ${referralId} (Patient: ${refDetailsName}).`);
+      logActivity('COMPLETE_TREATMENT', `Submitted discharge report and medical bill (₦${(finalReport.billingTotal || 0).toLocaleString()}) for referral ${referralId} (Patient: ${refDetailsName}). Sent to beneficiary for review.`);
 
-      return { success: true, message: 'Treatment completed successfully. Report submitted.' };
+      return { success: true, message: 'Treatment report and medical bill submitted successfully. Sent to patient for review.' };
     } catch (e) {
       console.error("Error completing treatment in Firestore:", e);
       return { success: false, message: 'Failed to submit treatment report.' };
+    }
+  };
+
+  const approveMedicalBill = async (
+    referralId: string,
+    options?: { patientSignatureImage?: string; confirmedName?: string }
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) {
+      return { success: false, message: 'Authentication required to approve medical bill.' };
+    }
+
+    const refObj = referrals.find(r => r.id === referralId);
+    if (!refObj || !refObj.treatmentReport) {
+      return { success: false, message: 'Referral or medical bill not found.' };
+    }
+
+    const now = new Date().toISOString();
+    const updatedReport: TreatmentReport = {
+      ...refObj.treatmentReport,
+      billStatus: 'APPROVED',
+      billApprovedAt: now,
+      confirmedByPatientName: options?.confirmedName || refObj.treatmentReport.confirmedByPatientName || currentUser.name,
+      patientSignature: 'Digitally Signed & Confirmed',
+      patientSignatureImage: options?.patientSignatureImage || refObj.treatmentReport.patientSignatureImage,
+      patientSignDate: now.split('T')[0]
+    };
+
+    const updatedRef: ReferralRequest = {
+      ...refObj,
+      status: 'TREATMENT_COMPLETED' as ReferralStatus,
+      treatmentReport: updatedReport,
+      updatedAt: now
+    };
+
+    try {
+      await setDoc(doc(db, 'referrals', referralId), cleanFirestoreData(updatedRef));
+
+      // Notify Hospital
+      if (refObj.hospitalId) {
+        await addNotification(
+          refObj.hospitalId,
+          'Medical Bill Approved by Beneficiary',
+          `${currentUser.name} has reviewed and approved the medical bill for referral ${refObj.id}. Case marked completed.`,
+          refObj.id
+        );
+      }
+
+      // Notify Admin
+      await addNotification(
+        'usr-admin',
+        'Medical Bill Approved by Beneficiary',
+        `${currentUser.name} approved the medical bill from ${refObj.hospitalName} for referral ${refObj.id}.`,
+        refObj.id
+      );
+
+      const refDetailsName = refObj.patientName || refObj.staffName;
+      logActivity('APPROVE_BILL', `Beneficiary ${currentUser.name} approved the medical bill (₦${(updatedReport.billingTotal || 0).toLocaleString()}) for referral ${referralId} (Patient: ${refDetailsName}).`);
+
+      return { success: true, message: 'Medical bill approved successfully. Treatment is completed.' };
+    } catch (e) {
+      console.error("Error approving medical bill in Firestore:", e);
+      return { success: false, message: 'Failed to approve medical bill.' };
+    }
+  };
+
+  const rejectMedicalBill = async (
+    referralId: string,
+    rejectionReason: string
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser) {
+      return { success: false, message: 'Authentication required to reject medical bill.' };
+    }
+
+    const refObj = referrals.find(r => r.id === referralId);
+    if (!refObj || !refObj.treatmentReport) {
+      return { success: false, message: 'Referral or medical bill not found.' };
+    }
+
+    const now = new Date().toISOString();
+    const updatedReport: TreatmentReport = {
+      ...refObj.treatmentReport,
+      billStatus: 'REJECTED',
+      billRejectionReason: rejectionReason,
+      billRejectedAt: now
+    };
+
+    const updatedRef: ReferralRequest = {
+      ...refObj,
+      status: 'BILL_REJECTED' as ReferralStatus,
+      treatmentReport: updatedReport,
+      updatedAt: now
+    };
+
+    try {
+      await setDoc(doc(db, 'referrals', referralId), cleanFirestoreData(updatedRef));
+
+      // Notify Hospital with reason
+      if (refObj.hospitalId) {
+        await addNotification(
+          refObj.hospitalId,
+          'Medical Bill Disputed / Rejected',
+          `${currentUser.name} has disputed/rejected the medical bill for referral ${refObj.id}. Reason: "${rejectionReason}". Please edit and resend the bill.`,
+          refObj.id
+        );
+      }
+
+      // Notify Admin
+      await addNotification(
+        'usr-admin',
+        'Medical Bill Disputed by Beneficiary',
+        `${currentUser.name} has disputed the bill from ${refObj.hospitalName} for referral ${refObj.id}. Reason: "${rejectionReason}".`,
+        refObj.id
+      );
+
+      const refDetailsName = refObj.patientName || refObj.staffName;
+      logActivity('REJECT_BILL', `Beneficiary ${currentUser.name} disputed medical bill for referral ${referralId} (Patient: ${refDetailsName}). Reason: "${rejectionReason}"`);
+
+      return { success: true, message: 'Medical bill dispute submitted to hospital for revision.' };
+    } catch (e) {
+      console.error("Error rejecting medical bill in Firestore:", e);
+      return { success: false, message: 'Failed to reject medical bill.' };
+    }
+  };
+
+  const resubmitMedicalBill = async (
+    referralId: string,
+    updatedReport: Partial<TreatmentReport>
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser || currentUser.role !== 'HOSPITAL') {
+      return { success: false, message: 'Only hospital users can revise and resubmit medical bills.' };
+    }
+
+    const refObj = referrals.find(r => r.id === referralId);
+    if (!refObj || !refObj.treatmentReport) {
+      return { success: false, message: 'Referral or previous report not found.' };
+    }
+
+    const now = new Date().toISOString();
+    const finalReport: TreatmentReport = {
+      ...refObj.treatmentReport,
+      ...updatedReport,
+      billStatus: 'PENDING_BENEFICIARY',
+      billResubmittedAt: now
+    };
+
+    const updatedRef: ReferralRequest = {
+      ...refObj,
+      status: 'BILL_SUBMITTED' as ReferralStatus,
+      treatmentReport: finalReport,
+      updatedAt: now
+    };
+
+    try {
+      await setDoc(doc(db, 'referrals', referralId), cleanFirestoreData(updatedRef));
+
+      // Notify Staff
+      await addNotification(
+        refObj.staffId,
+        'Revised Medical Bill Submitted',
+        `${refObj.hospitalName} has revised and resubmitted your medical bill (₦${(finalReport.billingTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}). Please review and approve.`,
+        refObj.id
+      );
+
+      // Notify Admin
+      await addNotification(
+        'usr-admin',
+        'Hospital Resubmitted Revised Medical Bill',
+        `${refObj.hospitalName} has revised the disputed bill for ${refObj.staffName}.`,
+        refObj.id
+      );
+
+      const refDetailsName = refObj.patientName || refObj.staffName;
+      logActivity('RESUBMIT_BILL', `Hospital ${currentUser.name} revised and resubmitted medical bill for referral ${referralId} (Patient: ${refDetailsName}). Total: ₦${(finalReport.billingTotal || 0).toLocaleString()}`);
+
+      return { success: true, message: 'Revised medical bill successfully resubmitted to beneficiary.' };
+    } catch (e) {
+      console.error("Error resubmitting medical bill in Firestore:", e);
+      return { success: false, message: 'Failed to resubmit revised medical bill.' };
     }
   };
 
@@ -577,6 +871,8 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return referrals.filter(
         r => r.status === 'APPROVED_FORWARDED' ||
              r.status === 'ACCEPTED' ||
+             r.status === 'BILL_SUBMITTED' ||
+             r.status === 'BILL_REJECTED' ||
              r.status === 'TREATMENT_COMPLETED'
       );
     }
@@ -598,8 +894,12 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         notifications,
         createReferral,
         updateReferralStatus,
+        resubmitReferral,
         acceptReferral,
         completeTreatment,
+        approveMedicalBill,
+        rejectMedicalBill,
+        resubmitMedicalBill,
         declineReferral,
         addProgressNote,
         updateVitals,

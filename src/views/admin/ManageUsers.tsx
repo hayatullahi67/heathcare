@@ -54,7 +54,8 @@ export const ManageUsers: React.FC = () => {
     const matchesSearch =
       user.name.toLowerCase().includes(userSearch.toLowerCase()) ||
       user.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-      (user.pensionId && user.pensionId.toLowerCase().includes(userSearch.toLowerCase()));
+      (user.pensionId && user.pensionId.toLowerCase().includes(userSearch.toLowerCase())) ||
+      (user.staffIdNumber && user.staffIdNumber.toLowerCase().includes(userSearch.toLowerCase()));
 
     if (userRoleFilter === 'ALL') return matchesSearch;
     return matchesSearch && user.role === userRoleFilter;
@@ -408,8 +409,14 @@ export const ManageUsers: React.FC = () => {
                           <td style={{ padding: '0.85rem 1rem', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
                             {user.role === 'RETIRED_STAFF' && (
                               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Pension ID: {user.pensionId}</span>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prior Dept: {user.department}</span>
+                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Pension ID: {user.pensionId || 'N/A'}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prior Dept: {user.department || 'Retired Staff'}</span>
+                              </div>
+                            )}
+                            {user.role === 'STAFF' && (
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Staff ID: {user.staffIdNumber || user.pensionId || 'N/A'}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Dept: {user.department || 'Active Staff'}</span>
                               </div>
                             )}
                             {user.role === 'HOSPITAL' && (
@@ -518,11 +525,23 @@ export const ManageUsers: React.FC = () => {
                           <>
                             <div className="flex justify-between items-center">
                               <span className="text-text-muted">Pension ID:</span>
-                              <span className="text-text-secondary font-semibold">{user.pensionId}</span>
+                              <span className="text-text-secondary font-semibold">{user.pensionId || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-text-muted">Prior Dept:</span>
-                              <span className="text-text-secondary font-semibold">{user.department}</span>
+                              <span className="text-text-secondary font-semibold">{user.department || 'Retired Staff'}</span>
+                            </div>
+                          </>
+                        )}
+                        {user.role === 'STAFF' && (
+                          <>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Staff ID:</span>
+                              <span className="text-text-secondary font-semibold">{user.staffIdNumber || user.pensionId || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-text-muted">Department:</span>
+                              <span className="text-text-secondary font-semibold">{user.department || 'Active Staff'}</span>
                             </div>
                           </>
                         )}
@@ -808,12 +827,14 @@ export const ManageUsers: React.FC = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" htmlFor="pension-id">Pension Reg. ID</label>
+                      <label className="form-label" htmlFor="pension-id">
+                        {activeFormTab === 'STAFF' ? 'Staff ID No.' : 'Pension Reg. ID'}
+                      </label>
                       <input
                         id="pension-id"
                         type="text"
                         className="form-control"
-                        placeholder="P-7728-102"
+                        placeholder={activeFormTab === 'STAFF' ? 'STF-44012' : 'P-7728-102'}
                         value={pensionId}
                         onChange={e => setPensionId(e.target.value)}
                         disabled={loading}

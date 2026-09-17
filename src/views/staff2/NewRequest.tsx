@@ -16,8 +16,6 @@ export const NewRequest: React.FC = () => {
   const { currentUser, hospitalsList } = useAuth();
   const { createReferral } = useReferral();
 
-  if (!currentUser) return null;
-
   // Form states
   const [hospitalName, setHospitalName] = useState('');
   const [hospitalLocation, setHospitalLocation] = useState('');
@@ -35,15 +33,17 @@ export const NewRequest: React.FC = () => {
   const [branchCenter] = useState('Lafia');
   const [residentialAddress, setResidentialAddress] = useState('');
 
-  // Dynamic placeholders for fallback submission values
-  const patientNamePlaceholder = patientRelationship === 'Self' ? (currentUser.name || '') : '';
-  const patientIdPlaceholder = patientRelationship === 'Self' ? (currentUser.pensionId || '') : '';
-  const departmentPlaceholder = currentUser.department || '';
-
   // Feedback states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  if (!currentUser) return null;
+
+  // Dynamic placeholders for fallback submission values
+  const patientNamePlaceholder = patientRelationship === 'Self' ? (currentUser.name || '') : '';
+  const patientIdPlaceholder = patientRelationship === 'Self' ? (currentUser.staffIdNumber || currentUser.pensionId || '') : '';
+  const departmentPlaceholder = currentUser.department || '';
 
   const selectedHospital = hospitalsList.find(
     hospital => hospital.name.trim().toLowerCase() === hospitalName.trim().toLowerCase()
@@ -70,7 +70,7 @@ export const NewRequest: React.FC = () => {
       return;
     }
     if (!finalPatientId) {
-      setError('Please enter Patient ID / Pension ID No.');
+      setError('Please enter Staff ID No.');
       return;
     }
     if (!patientAge) {
@@ -93,13 +93,16 @@ export const NewRequest: React.FC = () => {
       telephoneNumber,
       departmentAtExit: finalDepartmentAtExit,
       branchCenter,
-      residentialAddress
+      residentialAddress,
+      patientId: finalPatientId,
+      staffIdNumber: finalPatientId,
+      pensionId: finalPatientId
     };
 
     // Construct description dynamically to satisfy system schemas
     const enteredHospitalName = hospitalName.trim();
     const referralHospitalId = selectedHospital?.id || `external-${Date.now()}`;
-    const generatedDescription = `Official CBN Medical Referral Request for patient ${finalPatientName} (${patientRelationship}, Age: ${patientAge}, Sex: ${patientSex}). Beneficiary Branch Currency Center: ${branchCenter}. Status at Exit: ${statusAtExit || 'N/A'}, Department: ${finalDepartmentAtExit || 'N/A'}. Assigned Facility: ${enteredHospitalName} (Location: ${hospitalLocation.trim()}). Residential Address: ${residentialAddress || 'N/A'}.`;
+    const generatedDescription = `Official CBN Medical Referral Request for patient ${finalPatientName} (${patientRelationship}, Age: ${patientAge}, Sex: ${patientSex}). Beneficiary Staff Member Branch: ${branchCenter}. Designation / Grade Level: ${statusAtExit || 'N/A'}, Department: ${finalDepartmentAtExit || 'N/A'}. Assigned Facility: ${enteredHospitalName} (Location: ${hospitalLocation.trim()}). Residential Address: ${residentialAddress || 'N/A'}.`;
 
     const res = await createReferral(
       referralHospitalId,
@@ -254,12 +257,12 @@ export const NewRequest: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-text-secondary" htmlFor="pension-id">Patient ID No. / Pension ID</label>
+                  <label className="text-xs font-bold text-text-secondary" htmlFor="staff-id">Staff ID No.</label>
                   <input
-                    id="pension-id"
+                    id="staff-id"
                     type="text"
-                    className="bg-bg-primary text-text-primary border border-border-color rounded-lg px-3 py-2 text-sm outline-none focus:border-primary w-full transition-all"
-                    placeholder={patientIdPlaceholder || "ID Number"}
+                    className="bg-bg-primary text-text-primary border border-border-color rounded-lg px-3 py-2 text-sm outline-none focus:border-primary w-full transition-all font-mono"
+                    placeholder={patientIdPlaceholder || "e.g. STF-44012"}
                     value={patientId}
                     onChange={e => setPatientId(e.target.value)}
                     disabled={loading}
@@ -309,12 +312,12 @@ export const NewRequest: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-text-secondary" htmlFor="status-at-exit">Status / Grade Level at Exit</label>
+                  <label className="text-xs font-bold text-text-secondary" htmlFor="status-at-exit">Designation / Grade Level</label>
                   <input
                     id="status-at-exit"
                     type="text"
                     className="bg-bg-primary text-text-primary border border-border-color rounded-lg px-3 py-2 text-sm outline-none focus:border-primary w-full transition-all"
-                    placeholder="e.g. Principal Manager, GL-15"
+                    placeholder="e.g. Senior Manager, GL-14"
                     value={statusAtExit}
                     onChange={e => setStatusAtExit(e.target.value)}
                     disabled={loading}
@@ -322,12 +325,12 @@ export const NewRequest: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-text-secondary" htmlFor="dept-at-exit">Department at Exit</label>
+                  <label className="text-xs font-bold text-text-secondary" htmlFor="dept-at-exit">Department</label>
                   <input
                     id="dept-at-exit"
                     type="text"
                     className="bg-bg-primary text-text-primary border border-border-color rounded-lg px-3 py-2 text-sm outline-none focus:border-primary w-full transition-all"
-                    placeholder={departmentPlaceholder || "Department Name"}
+                    placeholder={departmentPlaceholder || "e.g. Banking Operations"}
                     value={departmentAtExit}
                     onChange={e => setDepartmentAtExit(e.target.value)}
                     disabled={loading}

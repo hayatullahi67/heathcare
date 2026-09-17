@@ -16,8 +16,6 @@ export const NewRequest: React.FC = () => {
   const { currentUser, hospitalsList } = useAuth();
   const { createReferral } = useReferral();
 
-  if (!currentUser) return null;
-
   // Form states
   const [hospitalName, setHospitalName] = useState('');
   const [hospitalLocation, setHospitalLocation] = useState('');
@@ -35,15 +33,17 @@ export const NewRequest: React.FC = () => {
   const [branchCenter] = useState('Lafia');
   const [residentialAddress, setResidentialAddress] = useState('');
 
-  // Dynamic placeholders for fallback submission values
-  const patientNamePlaceholder = patientRelationship === 'Self' ? (currentUser.name || '') : '';
-  const patientIdPlaceholder = patientRelationship === 'Self' ? (currentUser.pensionId || '') : '';
-  const departmentPlaceholder = currentUser.department || '';
-
   // Feedback states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  if (!currentUser) return null;
+
+  // Dynamic placeholders for fallback submission values
+  const patientNamePlaceholder = patientRelationship === 'Self' ? (currentUser.name || '') : '';
+  const patientIdPlaceholder = patientRelationship === 'Self' ? (currentUser.pensionId || '') : '';
+  const departmentPlaceholder = currentUser.department || '';
 
   const selectedHospital = hospitalsList.find(
     hospital => hospital.name.trim().toLowerCase() === hospitalName.trim().toLowerCase()
@@ -93,7 +93,9 @@ export const NewRequest: React.FC = () => {
       telephoneNumber,
       departmentAtExit: finalDepartmentAtExit,
       branchCenter,
-      residentialAddress
+      residentialAddress,
+      patientId: finalPatientId,
+      pensionId: finalPatientId
     };
 
     // Construct description dynamically to satisfy system schemas
@@ -255,12 +257,12 @@ export const NewRequest: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-text-secondary" htmlFor="pension-id">Patient ID No. / Pension ID</label>
+                  <label className="text-xs font-bold text-text-secondary" htmlFor="pension-id">Pension ID No.</label>
                   <input
                     id="pension-id"
                     type="text"
-                    className="bg-bg-primary text-text-primary border border-border-color rounded-lg px-3 py-2 text-sm outline-none focus:border-primary w-full transition-all"
-                    placeholder={patientIdPlaceholder || "ID Number"}
+                    className="bg-bg-primary text-text-primary border border-border-color rounded-lg px-3 py-2 text-sm outline-none focus:border-primary w-full transition-all font-mono"
+                    placeholder={patientIdPlaceholder || "e.g. PEN-90210"}
                     value={patientId}
                     onChange={e => setPatientId(e.target.value)}
                     disabled={loading}

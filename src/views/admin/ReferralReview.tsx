@@ -19,9 +19,11 @@ import {
   Stethoscope,
   Paperclip,
   Activity,
-  History
+  History,
+  AlertTriangle,
+  Receipt
 } from 'lucide-react';
-import type { ReferralRequest } from '../../types';
+import { getReferralIdInfo, type ReferralRequest } from '../../types';
 
 export const ReferralReview: React.FC = () => {
   const { referrals, updateReferralStatus } = useReferral();
@@ -79,9 +81,13 @@ export const ReferralReview: React.FC = () => {
   };
 
   const filteredReferrals = referrals.filter(ref => {
+    const info = getReferralIdInfo(ref);
     const matchesSearch =
       ref.staffName.toLowerCase().includes(referralSearch.toLowerCase()) ||
+      (ref.patientName && ref.patientName.toLowerCase().includes(referralSearch.toLowerCase())) ||
+      info.idValue.toLowerCase().includes(referralSearch.toLowerCase()) ||
       (ref.pensionId && ref.pensionId.toLowerCase().includes(referralSearch.toLowerCase())) ||
+      (ref.staffIdNumber && ref.staffIdNumber.toLowerCase().includes(referralSearch.toLowerCase())) ||
       ref.hospitalName.toLowerCase().includes(referralSearch.toLowerCase());
 
     const matchesStatus = statusFilter === 'ALL' || ref.status === statusFilter;
@@ -92,7 +98,9 @@ export const ReferralReview: React.FC = () => {
 
   const totalCount = referrals.length;
   const pendingCount = referrals.filter(r => r.status === 'PENDING_ADMIN').length;
-  const activeCount = referrals.filter(r => r.status === 'ACCEPTED' || r.status === 'APPROVED_FORWARDED').length;
+  const activeCount = referrals.filter(
+    r => r.status === 'ACCEPTED' || r.status === 'APPROVED_FORWARDED' || r.status === 'BILL_SUBMITTED' || r.status === 'BILL_REJECTED'
+  ).length;
   const completedCount = referrals.filter(r => r.status === 'TREATMENT_COMPLETED').length;
 
   return (
@@ -187,6 +195,8 @@ export const ReferralReview: React.FC = () => {
                   <option value="PENDING_ADMIN">Pending Review</option>
                   <option value="APPROVED_FORWARDED">Approved & Forwarded</option>
                   <option value="ACCEPTED">Accepted / Active</option>
+                  <option value="BILL_SUBMITTED">Bill Review Required</option>
+                  <option value="BILL_REJECTED">Bill Disputed</option>
                   <option value="TREATMENT_COMPLETED">Treatment Completed</option>
                   <option value="REJECTED">Rejected</option>
                   <option value="INFO_REQUESTED">More Info Requested</option>
@@ -215,7 +225,7 @@ export const ReferralReview: React.FC = () => {
               <table className="w-full border-collapse m-0 min-w-[950px]">
                 <thead>
                   <tr className="border-b border-border-color bg-bg-primary">
-                    <th className="text-left py-3 px-4 text-xs uppercase text-text-muted font-bold">Patient / Pension ID</th>
+                    <th className="text-left py-3 px-4 text-xs uppercase text-text-muted font-bold">Patient / Identifier</th>
                     <th className="text-left py-3 px-4 text-xs uppercase text-text-muted font-bold">Assigned Hospital</th>
                     <th className="text-left py-3 px-4 text-xs uppercase text-text-muted font-bold">Urgency Level</th>
                     <th className="text-left py-3 px-4 text-xs uppercase text-text-muted font-bold">Submission Date</th>
@@ -231,45 +241,55 @@ export const ReferralReview: React.FC = () => {
                       </td>
                     </tr>
                   ) : (
-                    filteredReferrals.map(ref => (
-                      <tr key={ref.id} className="border-b border-border-color hover:bg-bg-primary/45 transition-colors last:border-none">
-                        <td className="py-3 px-4">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-[0.875rem] text-text-primary leading-tight">{ref.patientName || ref.staffName}</span>
-                            <span className="text-[0.75rem] text-text-secondary mt-0.5 font-mono">Pension ID: {ref.pensionId || 'N/A'}</span>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-[0.875rem] text-text-primary">
-                          {ref.hospitalName}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-bg-primary text-text-secondary border border-border-color">
-                            {ref.urgencyLevel}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-[0.85rem] text-text-secondary">
-                          {new Date(ref.createdAt).toLocaleDateString([], {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge status={ref.status} />
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => {
-                              setSelectedId(ref.id);
-                              setViewMode('DETAIL');
-                            }}
-                            className="px-3 py-1.5 rounded bg-primary hover:bg-primary-hover text-white font-bold text-xs transition-all cursor-pointer whitespace-nowrap"
-                          >
-                            Review Case
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    filteredReferrals.map(ref => {
+                      const info = getReferralIdInfo(ref);
+                      return (
+                        <tr key={ref.id} className="border-b border-border-color hover:bg-bg-primary/45 transition-colors last:border-none">
+                          <td className="py-3 px-4">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-[0.875rem] text-text-primary leading-tight">{ref.patientName || ref.staffName}</span>
+                              <span className="text-[0.75rem] text-text-secondary mt-0.5 font-mono">{info.idLabel}: {info.idValue}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-[0.875rem] text-text-primary">
+                            {ref.hospitalName}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-bg-primary text-text-secondary border border-border-color">
+                              {ref.urgencyLevel}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-[0.85rem] text-text-secondary">
+                            {new Date(ref.createdAt).toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex flex-col gap-1 items-start">
+                              <Badge status={ref.status} />
+                              {ref.isResubmitted && ref.status === 'PENDING_ADMIN' && (
+                                <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                                  Resubmitted with Updates
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => {
+                                setSelectedId(ref.id);
+                                setViewMode('DETAIL');
+                              }}
+                              className="px-3 py-1.5 rounded bg-primary hover:bg-primary-hover text-white font-bold text-xs transition-all cursor-pointer whitespace-nowrap"
+                            >
+                              Review Case
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -282,15 +302,24 @@ export const ReferralReview: React.FC = () => {
                   No referrals found matching current filters.
                 </div>
               ) : (
-                filteredReferrals.map(ref => (
-                  <div key={ref.id} className="bg-bg-primary border border-border-color rounded-xl p-4 flex flex-col gap-3 shadow-sm">
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-sm text-text-primary">{ref.patientName || ref.staffName}</span>
-                        <span className="text-[0.7rem] text-text-muted mt-0.5 font-mono">Pension ID: {ref.pensionId || 'N/A'}</span>
+                filteredReferrals.map(ref => {
+                  const info = getReferralIdInfo(ref);
+                  return (
+                    <div key={ref.id} className="bg-bg-primary border border-border-color rounded-xl p-4 flex flex-col gap-3 shadow-sm">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-text-primary">{ref.patientName || ref.staffName}</span>
+                          <span className="text-[0.7rem] text-text-muted mt-0.5 font-mono">{info.idLabel}: {info.idValue}</span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <Badge status={ref.status} />
+                          {ref.isResubmitted && ref.status === 'PENDING_ADMIN' && (
+                            <span className="inline-flex items-center gap-1 text-[0.65rem] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                              Resubmitted with Updates
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <Badge status={ref.status} />
-                    </div>
 
                     <div className="flex flex-col gap-1.5 border-t border-border-color pt-2.5 text-xs">
                       <div className="flex justify-between items-center">
@@ -319,8 +348,9 @@ export const ReferralReview: React.FC = () => {
                       Review Case File
                     </button>
                   </div>
-                ))
-              )}
+                );
+              })
+            )}
             </div>
           </div>
         </>
@@ -350,12 +380,58 @@ export const ReferralReview: React.FC = () => {
                   <p className="text-xs text-text-muted m-0 mt-1">Submitted: {new Date(selectedRef.createdAt).toLocaleString()} | Case ID: {selectedRef.id}</p>
                 </div>
                 <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
-                  <Badge status={selectedRef.status} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge status={selectedRef.status} />
+                    {selectedRef.isResubmitted && selectedRef.status === 'PENDING_ADMIN' && (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 whitespace-nowrap">
+                        Resubmitted with Updates
+                      </span>
+                    )}
+                  </div>
                   <span className="text-xs font-bold px-2 py-0.5 rounded bg-bg-primary text-text-secondary border border-border-color">
                     Urgency: {selectedRef.urgencyLevel}
                   </span>
                 </div>
               </div>
+
+              {/* Resubmitted Callout Banner */}
+              {selectedRef.isResubmitted && (
+                <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4 flex flex-col gap-2 text-emerald-900 dark:text-emerald-200">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <span className="font-bold text-xs uppercase tracking-wider flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400" />
+                      Beneficiary Resubmitted with Requested Clarifications
+                    </span>
+                    {selectedRef.resubmittedAt && (
+                      <span className="text-[0.7rem] text-emerald-600 dark:text-emerald-400 font-medium">
+                        Resubmitted: {new Date(selectedRef.resubmittedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                      </span>
+                    )}
+                  </div>
+                  {selectedRef.staffResponseNotes && (
+                    <div className="text-xs text-text-secondary m-0 bg-bg-primary/80 p-3 rounded-lg border border-emerald-500/20">
+                      <strong className="text-text-primary block mb-1">Beneficiary Clarification Note:</strong>
+                      <p className="m-0 leading-relaxed whitespace-pre-wrap">{selectedRef.staffResponseNotes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Waiting on Beneficiary Banner */}
+              {selectedRef.status === 'INFO_REQUESTED' && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col gap-2 text-amber-900 dark:text-amber-200">
+                  <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                    <HelpCircle size={16} />
+                    <span>Awaiting Clarification / Resubmission from Beneficiary</span>
+                  </div>
+                  {selectedRef.moreInfoRequestedNotes && (
+                    <div className="text-xs text-text-secondary m-0 bg-bg-primary/80 p-3 rounded-lg border border-amber-500/20">
+                      <strong className="text-text-primary block mb-1">Admin's Requested Information:</strong>
+                      <p className="m-0 leading-relaxed whitespace-pre-wrap">{selectedRef.moreInfoRequestedNotes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Section 1: Patient & Provider Info Split Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -365,45 +441,56 @@ export const ReferralReview: React.FC = () => {
                     <User size={16} className="text-primary" />
                     <span>Patient Demographics</span>
                   </h3>
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div>
-                      <span className="text-text-muted font-bold block mb-0.5">Patient Name</span>
-                      <strong className="text-text-primary font-bold text-sm">{selectedRef.patientName || selectedRef.staffName}</strong>
-                    </div>
-                    <div>
-                      <span className="text-text-muted font-bold block mb-0.5">Pension Reg. ID</span>
-                      <strong className="text-text-primary font-mono font-bold text-sm">{selectedRef.pensionId || 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span className="text-text-muted font-bold block mb-0.5">Relationship</span>
-                      <strong className="text-text-primary font-bold text-sm">{selectedRef.patientRelationship || 'Self'}</strong>
-                    </div>
-                    <div>
-                      <span className="text-text-muted font-bold block mb-0.5">Age / Gender</span>
-                      <strong className="text-text-primary font-bold text-sm">{selectedRef.patientAge ? `${selectedRef.patientAge} Yrs / ${selectedRef.patientSex}` : 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span className="text-text-muted font-bold block mb-0.5">Prior Department</span>
-                      <strong className="text-text-primary font-bold text-sm">{selectedRef.departmentAtExit || 'N/A'}</strong>
-                    </div>
-                    <div>
-                      <span className="text-text-muted font-bold block mb-0.5">Branch Center</span>
-                      <strong className="text-text-primary font-bold text-sm">{selectedRef.branchCenter || 'N/A'}</strong>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-text-muted font-bold block mb-0.5">Contact Telephone</span>
-                      <strong className="text-text-primary font-bold text-sm flex items-center gap-1.5">
-                        <Phone size={12} className="text-text-muted" />
-                        {selectedRef.telephoneNumber || 'N/A'}
-                      </strong>
-                    </div>
-                    {selectedRef.residentialAddress && (
-                      <div className="col-span-2">
-                        <span className="text-text-muted font-bold block mb-0.5">Residential Address</span>
-                        <span className="text-text-secondary leading-relaxed font-semibold">{selectedRef.residentialAddress}</span>
+                  {(() => {
+                    const info = getReferralIdInfo(selectedRef);
+                    return (
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div>
+                          <span className="text-text-muted font-bold block mb-0.5">Patient Name</span>
+                          <strong className="text-text-primary font-bold text-sm">{selectedRef.patientName || selectedRef.staffName}</strong>
+                        </div>
+                        <div>
+                          <span className="text-text-muted font-bold block mb-0.5">{info.idLabel} No.</span>
+                          <strong className="text-text-primary font-mono font-bold text-sm">{info.idValue}</strong>
+                        </div>
+                        <div>
+                          <span className="text-text-muted font-bold block mb-0.5">Relationship</span>
+                          <strong className="text-text-primary font-bold text-sm">{selectedRef.patientRelationship || 'Self'}</strong>
+                        </div>
+                        <div>
+                          <span className="text-text-muted font-bold block mb-0.5">Age / Gender</span>
+                          <strong className="text-text-primary font-bold text-sm">{selectedRef.patientAge ? `${selectedRef.patientAge} Yrs / ${selectedRef.patientSex}` : 'N/A'}</strong>
+                        </div>
+                        <div>
+                          <span className="text-text-muted font-bold block mb-0.5">{info.deptLabel}</span>
+                          <strong className="text-text-primary font-bold text-sm">{selectedRef.departmentAtExit || 'N/A'}</strong>
+                        </div>
+                        <div>
+                          <span className="text-text-muted font-bold block mb-0.5">{info.branchLabel}</span>
+                          <strong className="text-text-primary font-bold text-sm">{selectedRef.branchCenter || 'N/A'}</strong>
+                        </div>
+                        {selectedRef.statusAtExit && (
+                          <div className="col-span-2">
+                            <span className="text-text-muted font-bold block mb-0.5">{info.statusLabel}</span>
+                            <strong className="text-text-primary font-bold text-sm">{selectedRef.statusAtExit}</strong>
+                          </div>
+                        )}
+                        <div className="col-span-2">
+                          <span className="text-text-muted font-bold block mb-0.5">Contact Telephone</span>
+                          <strong className="text-text-primary font-bold text-sm flex items-center gap-1.5">
+                            <Phone size={12} className="text-text-muted" />
+                            {selectedRef.telephoneNumber || 'N/A'}
+                          </strong>
+                        </div>
+                        {selectedRef.residentialAddress && (
+                          <div className="col-span-2">
+                            <span className="text-text-muted font-bold block mb-0.5">Residential Address</span>
+                            <span className="text-text-secondary leading-relaxed font-semibold">{selectedRef.residentialAddress}</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Provider Info Column */}
@@ -465,17 +552,74 @@ export const ReferralReview: React.FC = () => {
               </div>
 
               {/* Hospital Treatment Report Display */}
-              {selectedRef.status === 'TREATMENT_COMPLETED' && selectedRef.treatmentReport && (
-                <div className="bg-success-bg border border-success/20 rounded-xl p-5 flex flex-col gap-4 shadow-sm mt-2">
-                  <div className="flex justify-between items-center border-b border-success/15 pb-2">
-                    <h4 className="text-success font-bold text-sm flex items-center gap-2 m-0">
-                      <FileCheck size={18} />
-                      <span>Completed Medical Report</span>
+              {(selectedRef.status === 'TREATMENT_COMPLETED' || selectedRef.status === 'BILL_SUBMITTED' || selectedRef.status === 'BILL_REJECTED') && selectedRef.treatmentReport && (
+                <div className={`border rounded-xl p-5 flex flex-col gap-4 shadow-sm mt-2 ${
+                  selectedRef.status === 'TREATMENT_COMPLETED'
+                    ? 'bg-success-bg border-success/20'
+                    : selectedRef.status === 'BILL_REJECTED'
+                      ? 'bg-rose-500/10 border-rose-500/30'
+                      : 'bg-blue-500/10 border-blue-500/30'
+                }`}>
+                  <div className={`flex justify-between items-center border-b pb-2 ${
+                    selectedRef.status === 'TREATMENT_COMPLETED'
+                      ? 'border-success/15'
+                      : selectedRef.status === 'BILL_REJECTED'
+                        ? 'border-rose-500/20'
+                        : 'border-blue-500/20'
+                  }`}>
+                    <h4 className={`font-bold text-sm flex items-center gap-2 m-0 ${
+                      selectedRef.status === 'TREATMENT_COMPLETED'
+                        ? 'text-success'
+                        : selectedRef.status === 'BILL_REJECTED'
+                          ? 'text-rose-700 dark:text-rose-400'
+                          : 'text-blue-700 dark:text-blue-400'
+                    }`}>
+                      {selectedRef.status === 'TREATMENT_COMPLETED' ? (
+                        <FileCheck size={18} />
+                      ) : selectedRef.status === 'BILL_REJECTED' ? (
+                        <AlertTriangle size={18} />
+                      ) : (
+                        <Receipt size={18} />
+                      )}
+                      <span>
+                        {selectedRef.status === 'TREATMENT_COMPLETED'
+                          ? 'Completed Medical Report'
+                          : selectedRef.status === 'BILL_REJECTED'
+                            ? 'Medical Bill Disputed by Beneficiary'
+                            : 'Medical Bill Submitted (Awaiting Beneficiary Approval)'}
+                      </span>
                     </h4>
-                    <span className="text-success font-bold text-xs">
-                      Completed: {new Date(selectedRef.treatmentReport.completedAt).toLocaleDateString()}
+                    <span className={`font-bold text-xs ${
+                      selectedRef.status === 'TREATMENT_COMPLETED'
+                        ? 'text-success'
+                        : selectedRef.status === 'BILL_REJECTED'
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-blue-600 dark:text-blue-400'
+                    }`}>
+                      {selectedRef.status === 'TREATMENT_COMPLETED'
+                        ? `Completed: ${new Date(selectedRef.treatmentReport.completedAt).toLocaleDateString()}`
+                        : selectedRef.status === 'BILL_REJECTED'
+                          ? 'Disputed / In Review'
+                          : 'Awaiting Beneficiary Approval'}
                     </span>
                   </div>
+
+                  {selectedRef.status === 'BILL_REJECTED' && selectedRef.treatmentReport.billRejectionReason && (
+                    <div className="p-3.5 rounded-lg bg-rose-500/15 border border-rose-500/30 flex flex-col gap-1">
+                      <span className="text-[0.65rem] font-extrabold uppercase tracking-wider text-rose-800 dark:text-rose-300">
+                        Beneficiary Dispute / Rejection Reason:
+                      </span>
+                      <p className="text-xs text-rose-900 dark:text-rose-200 m-0 font-medium whitespace-pre-wrap">
+                        {selectedRef.treatmentReport.billRejectionReason}
+                      </p>
+                      {selectedRef.treatmentReport.billRejectedAt && (
+                        <span className="text-[0.65rem] text-rose-700/80 dark:text-rose-400/80 mt-0.5">
+                          Disputed on: {new Date(selectedRef.treatmentReport.billRejectedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-2">
                     <div className="flex justify-between items-start text-xs">
                       <span className="font-semibold text-text-secondary">Confirmed Diagnosis:</span>
@@ -489,6 +633,14 @@ export const ReferralReview: React.FC = () => {
                       <span className="font-semibold text-text-secondary">Attending Physician:</span>
                       <span className="text-text-primary font-bold">{selectedRef.treatmentReport.physicianName}</span>
                     </div>
+                    {selectedRef.treatmentReport.billingTotal !== undefined && (
+                      <div className="flex justify-between items-center text-xs pt-1 border-t border-border-color/40">
+                        <span className="font-semibold text-text-secondary">Total Certified Bill:</span>
+                        <span className="font-mono font-extrabold text-sm text-primary">
+                          ₦{selectedRef.treatmentReport.billingTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
                     {selectedRef.treatmentReport.invoiceNo && (
                       <button
                         onClick={() => setShowDetailedReport(selectedRef)}
@@ -503,24 +655,42 @@ export const ReferralReview: React.FC = () => {
               )}
 
               {/* Case Review History */}
-              {(selectedRef.adminNotes || selectedRef.moreInfoRequestedNotes) && (
+              {(selectedRef.adminNotes || selectedRef.moreInfoRequestedNotes || selectedRef.staffResponseNotes) && (
                 <div className="flex flex-col gap-3 border-t border-border-color pt-5">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary m-0 flex items-center gap-2">
                     <History size={16} className="text-primary" />
-                    <span>Case Review History</span>
+                    <span>Case Review & Clarification History</span>
                   </h3>
                   <div className="flex flex-col gap-3">
-                    {selectedRef.adminNotes && (
-                      <div className="p-4 rounded-lg border-l-4 bg-primary-lightest border-primary flex flex-col gap-1.5 shadow-sm">
-                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-primary">Admin Review Decision Notes</span>
-                        <p className="text-xs text-text-secondary leading-relaxed m-0">{selectedRef.adminNotes}</p>
+                    {selectedRef.moreInfoRequestedNotes && (
+                      <div className="p-4 rounded-lg border-l-4 bg-amber-500/10 border-amber-500 flex flex-col gap-1.5 shadow-sm">
+                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300 font-extrabold">
+                          Admin Information Clarification Request
+                        </span>
+                        <p className="text-xs text-text-secondary leading-relaxed m-0 whitespace-pre-wrap">{selectedRef.moreInfoRequestedNotes}</p>
                       </div>
                     )}
 
-                    {selectedRef.moreInfoRequestedNotes && (
-                      <div className="p-4 rounded-lg border-l-4 bg-info-bg border-info flex flex-col gap-1.5 shadow-sm">
-                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-info font-extrabold">Information Clarification Requested</span>
-                        <p className="text-xs text-text-secondary leading-relaxed m-0">{selectedRef.moreInfoRequestedNotes}</p>
+                    {selectedRef.staffResponseNotes && (
+                      <div className="p-4 rounded-lg border-l-4 bg-emerald-500/10 border-emerald-500 flex flex-col gap-1.5 shadow-sm">
+                        <div className="flex justify-between items-center flex-wrap gap-2">
+                          <span className="text-[0.65rem] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300 font-extrabold">
+                            Beneficiary Clarification & Resubmission Note
+                          </span>
+                          {selectedRef.resubmittedAt && (
+                            <span className="text-[0.7rem] text-emerald-600 dark:text-emerald-400">
+                              {new Date(selectedRef.resubmittedAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-text-secondary leading-relaxed m-0 whitespace-pre-wrap">{selectedRef.staffResponseNotes}</p>
+                      </div>
+                    )}
+
+                    {selectedRef.adminNotes && (
+                      <div className="p-4 rounded-lg border-l-4 bg-primary-lightest border-primary flex flex-col gap-1.5 shadow-sm">
+                        <span className="text-[0.65rem] font-bold uppercase tracking-wider text-primary">Admin Review Decision Notes</span>
+                        <p className="text-xs text-text-secondary leading-relaxed m-0 whitespace-pre-wrap">{selectedRef.adminNotes}</p>
                       </div>
                     )}
                   </div>
@@ -528,7 +698,7 @@ export const ReferralReview: React.FC = () => {
               )}
 
               {/* Decision Interactive Actions Area */}
-              {selectedRef.status === 'PENDING_ADMIN' && (
+              {(selectedRef.status === 'PENDING_ADMIN' || selectedRef.status === 'INFO_REQUESTED') && (
                 <div className="border-t border-border-color pt-6 mt-2 flex flex-col gap-4">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary m-0 flex items-center gap-2">
                     <Activity size={16} className="text-primary" />
@@ -759,8 +929,16 @@ export const ReferralReview: React.FC = () => {
 
                       <div className="flex-1 w-full">
                         <span className="block text-[0.65rem] font-bold text-slate-500 uppercase">DOCTOR'S DIGITAL SIGNATURE</span>
-                        <div className="h-12 border border-slate-300 bg-slate-50 flex items-center justify-center rounded">
-                          <span className="font-serif italic text-blue-800 text-2xl tracking-wide">{showDetailedReport.treatmentReport.attendingDoctor || showDetailedReport.treatmentReport.physicianName}</span>
+                        <div className="h-12 border border-slate-300 bg-slate-50 flex items-center justify-center rounded overflow-hidden">
+                          {showDetailedReport.treatmentReport.doctorSignatureImage ? (
+                            <img
+                              src={showDetailedReport.treatmentReport.doctorSignatureImage}
+                              alt="Doctor Signature"
+                              className="max-h-11 max-w-full object-contain"
+                            />
+                          ) : (
+                            <span className="font-serif italic text-blue-800 text-2xl tracking-wide">{showDetailedReport.treatmentReport.attendingDoctor || showDetailedReport.treatmentReport.physicianName}</span>
+                          )}
                         </div>
                       </div>
 
@@ -773,6 +951,69 @@ export const ReferralReview: React.FC = () => {
                         </p>
                       </div>
                     </div>
+
+                    {/* Branch Controller & Branch Support Endorsements */}
+                    {(showDetailedReport.treatmentReport.branchControllerSignatureImage || showDetailedReport.treatmentReport.branchControllerSignName || showDetailedReport.treatmentReport.branchSupportSignatureImage || showDetailedReport.treatmentReport.branchSupportSignName) && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        {/* Branch Controller */}
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded">
+                          <span className="block text-[0.65rem] font-extrabold text-primary uppercase mb-1">
+                            BRANCH CONTROLLER ENDORSEMENT
+                          </span>
+                          <div className="flex flex-col gap-1">
+                            <div className="text-xs">
+                              <span className="text-slate-500 font-semibold uppercase text-[0.65rem]">Name: </span>
+                              <strong className="text-slate-900">{showDetailedReport.treatmentReport.branchControllerSignName || 'Branch Controller'}</strong>
+                            </div>
+                            <div className="h-12 border border-slate-300 bg-white flex items-center justify-center rounded overflow-hidden">
+                              {showDetailedReport.treatmentReport.branchControllerSignatureImage ? (
+                                <img
+                                  src={showDetailedReport.treatmentReport.branchControllerSignatureImage}
+                                  alt="Branch Controller Signature"
+                                  className="max-h-10 max-w-full object-contain"
+                                />
+                              ) : (
+                                <span className="font-serif italic text-blue-900 text-xl">{showDetailedReport.treatmentReport.branchControllerSignName || 'Endorsed'}</span>
+                              )}
+                            </div>
+                            {showDetailedReport.treatmentReport.branchControllerSignDate && (
+                              <span className="text-[0.65rem] text-slate-500">
+                                Endorsed: {new Date(showDetailedReport.treatmentReport.branchControllerSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Branch Support */}
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded">
+                          <span className="block text-[0.65rem] font-extrabold text-primary uppercase mb-1">
+                            BRANCH SUPPORT ENDORSEMENT
+                          </span>
+                          <div className="flex flex-col gap-1">
+                            <div className="text-xs">
+                              <span className="text-slate-500 font-semibold uppercase text-[0.65rem]">Name: </span>
+                              <strong className="text-slate-900">{showDetailedReport.treatmentReport.branchSupportSignName || 'Branch Support Officer'}</strong>
+                            </div>
+                            <div className="h-12 border border-slate-300 bg-white flex items-center justify-center rounded overflow-hidden">
+                              {showDetailedReport.treatmentReport.branchSupportSignatureImage ? (
+                                <img
+                                  src={showDetailedReport.treatmentReport.branchSupportSignatureImage}
+                                  alt="Branch Support Signature"
+                                  className="max-h-10 max-w-full object-contain"
+                                />
+                              ) : (
+                                <span className="font-serif italic text-blue-900 text-xl">{showDetailedReport.treatmentReport.branchSupportSignName || 'Endorsed'}</span>
+                              )}
+                            </div>
+                            {showDetailedReport.treatmentReport.branchSupportSignDate && (
+                              <span className="text-[0.65rem] text-slate-500">
+                                Endorsed: {new Date(showDetailedReport.treatmentReport.branchSupportSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* SECTION D BILLING SUMMARY */}
@@ -939,30 +1180,49 @@ export const ReferralReview: React.FC = () => {
 
                   {/* PATIENT SIGNATURE CONFIRMATION SUMMARY */}
                   <div className="border border-slate-300 rounded p-5 bg-white">
-                    <h4 className="text-xs font-extrabold text-slate-900 uppercase -mx-5 -mt-5 mb-5 px-5 py-2.5 bg-slate-100 border-b border-slate-300 rounded-t">CONFIRMED BY (RETIREE / PENSIONER / DEPENDANT)</h4>
+                    {(() => {
+                      const repInfo = getReferralIdInfo(showDetailedReport);
+                      return (
+                        <>
+                          <h4 className="text-xs font-extrabold text-slate-900 uppercase -mx-5 -mt-5 mb-5 px-5 py-2.5 bg-slate-100 border-b border-slate-300 rounded-t">
+                            CONFIRMED BY ({repInfo.isStaff ? 'STAFF MEMBER / DEPENDANT' : 'RETIREE / PENSIONER / DEPENDANT'})
+                          </h4>
 
-                    <div className="flex flex-col sm:flex-row gap-4 items-end bg-slate-50 border border-slate-200 rounded p-4">
-                      <div className="flex-1 min-w-0 w-full">
-                        <span className="block text-[0.65rem] font-bold text-slate-500 uppercase">RETIREE / PENSIONER NAME</span>
-                        <p className="font-extrabold text-sm text-slate-900 m-0 mt-1">{showDetailedReport.treatmentReport.confirmedByPatientName || showDetailedReport.patientName || showDetailedReport.staffName}</p>
-                      </div>
+                          <div className="flex flex-col sm:flex-row gap-4 items-end bg-slate-50 border border-slate-200 rounded p-4">
+                            <div className="flex-1 min-w-0 w-full">
+                              <span className="block text-[0.65rem] font-bold text-slate-500 uppercase">
+                                {repInfo.isStaff ? 'STAFF MEMBER NAME' : 'RETIREE / PENSIONER NAME'}
+                              </span>
+                              <p className="font-extrabold text-sm text-slate-900 m-0 mt-1">{showDetailedReport.treatmentReport.confirmedByPatientName || showDetailedReport.patientName || showDetailedReport.staffName}</p>
+                            </div>
 
-                      <div className="flex-1 w-full">
-                        <span className="block text-[0.65rem] font-bold text-slate-500 uppercase">PATIENT'S DIGITAL SIGNATURE</span>
-                        <div className="h-12 border border-slate-300 bg-slate-50 flex items-center justify-center rounded">
-                          <span className="font-serif italic text-slate-900 text-2xl tracking-wide">{showDetailedReport.treatmentReport.confirmedByPatientName || showDetailedReport.patientName || showDetailedReport.staffName}</span>
-                        </div>
-                      </div>
+                            <div className="flex-1 w-full">
+                              <span className="block text-[0.65rem] font-bold text-slate-500 uppercase">PATIENT'S DIGITAL SIGNATURE</span>
+                              <div className="h-12 border border-slate-300 bg-slate-50 flex items-center justify-center rounded overflow-hidden">
+                                {showDetailedReport.treatmentReport.patientSignatureImage ? (
+                                  <img
+                                    src={showDetailedReport.treatmentReport.patientSignatureImage}
+                                    alt="Patient Digital Signature"
+                                    className="max-h-11 max-w-full object-contain"
+                                  />
+                                ) : (
+                                  <span className="font-serif italic text-slate-900 text-2xl tracking-wide">{showDetailedReport.treatmentReport.confirmedByPatientName || showDetailedReport.patientName || showDetailedReport.staffName}</span>
+                                )}
+                              </div>
+                            </div>
 
-                      <div className="w-full sm:w-[120px]">
-                        <span className="block text-[0.65rem] font-bold text-slate-500 uppercase">CONFIRMATION DATE</span>
-                        <p className="text-slate-900 font-medium m-0 mt-1.5">
-                          {showDetailedReport.treatmentReport.patientSignDate
-                            ? new Date(showDetailedReport.treatmentReport.patientSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-                            : 'N/A'}
-                        </p>
-                      </div>
-                    </div>
+                            <div className="w-full sm:w-auto shrink-0">
+                              <span className="block text-[0.65rem] font-bold text-slate-500 uppercase">CONFIRMATION DATE</span>
+                              <p className="font-mono text-xs font-bold text-slate-900 m-0 mt-1">
+                                {showDetailedReport.treatmentReport.patientSignDate
+                                  ? new Date(showDetailedReport.treatmentReport.patientSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
+                                  : 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {showDetailedReport.treatmentReport.reportFile && (

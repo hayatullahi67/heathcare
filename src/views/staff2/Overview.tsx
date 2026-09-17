@@ -6,7 +6,9 @@ import {
   FileText,
   Clock,
   CheckCircle2,
-  ClipboardList
+  ClipboardList,
+  AlertCircle,
+  ArrowRight
 } from 'lucide-react';
 
 export const Overview: React.FC = () => {
@@ -22,9 +24,19 @@ export const Overview: React.FC = () => {
     r => r.status === 'PENDING_ADMIN' || r.status === 'INFO_REQUESTED'
   ).length;
 
+  // Requests requiring beneficiary clarification
+  const infoRequestedReferrals = userReferrals.filter(
+    r => r.status === 'INFO_REQUESTED'
+  );
+
+  // Requests requiring medical bill review & signature
+  const billSubmittedReferrals = userReferrals.filter(
+    r => r.status === 'BILL_SUBMITTED'
+  );
+
   // Count active clinical authorizations
   const activeAuthCount = userReferrals.filter(
-    r => r.status === 'APPROVED_FORWARDED' || r.status === 'ACCEPTED'
+    r => r.status === 'APPROVED_FORWARDED' || r.status === 'ACCEPTED' || r.status === 'BILL_SUBMITTED' || r.status === 'BILL_REJECTED'
   ).length;
 
   // Count completed treatments
@@ -80,6 +92,68 @@ export const Overview: React.FC = () => {
         </button>
         </div>
       </div>
+
+      {/* Action Required Banner for Clarifications */}
+      {infoRequestedReferrals.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-pulse-subtle">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertCircle size={22} />
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm text-text-primary">
+                  Action Required: Clarification Requested
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold bg-amber-500 text-white">
+                  {infoRequestedReferrals.length} {infoRequestedReferrals.length === 1 ? 'case' : 'cases'}
+                </span>
+              </div>
+              <p className="text-xs text-text-secondary mt-1 m-0 leading-relaxed">
+                The reviewing administrator requested additional clinical details or documentation on your referral request. Please review the comments and resubmit.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/staff2/history')}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap"
+          >
+            <span>Review & Respond</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Action Required Banner for Medical Bill Reviews */}
+      {billSubmittedReferrals.length > 0 && (
+        <div className="bg-[#005f73]/10 border border-[#005f73]/30 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-pulse-subtle">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-[#005f73]/20 text-[#005f73] dark:text-[#2dd4bf] flex items-center justify-center shrink-0 mt-0.5">
+              <ClipboardList size={22} />
+            </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-sm text-text-primary">
+                  Action Required: Medical Bill Review & Signature
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[0.65rem] font-bold bg-[#005f73] text-white">
+                  {billSubmittedReferrals.length} {billSubmittedReferrals.length === 1 ? 'bill' : 'bills'}
+                </span>
+              </div>
+              <p className="text-xs text-text-secondary mt-1 m-0 leading-relaxed">
+                A healthcare provider has completed clinical treatment and submitted their 15-item medical bill for your review. Please inspect the charges and provide your digital signature to approve or dispute.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/staff2/history')}
+            className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#005f73] hover:bg-[#005f73]/90 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap"
+          >
+            <span>Review & Sign Bill</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Metrics Grid (Stats Cards) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -170,29 +244,42 @@ export const Overview: React.FC = () => {
                 </thead>
                 <tbody>
                   {userReferrals.slice(0, 4).map(ref => (
-                    <tr key={ref.id} className="border-b border-border-color last:border-none hover:bg-bg-primary/50 transition-colors">
+                    <tr
+                      key={ref.id}
+                      onClick={() => navigate('/staff2/history')}
+                      className="border-b border-border-color last:border-none hover:bg-bg-primary/60 transition-colors cursor-pointer"
+                    >
                       <td className="py-3 font-bold text-[0.875rem] text-text-primary">{ref.patientName || ref.staffName}</td>
                       <td className="py-3 text-[0.875rem] text-text-secondary">{resolveProcedureType(ref.diagnosisDescription)}</td>
                       <td className="py-3 text-[0.875rem] text-text-secondary">{formatDateString(ref.createdAt)}</td>
                       <td className="py-3 font-mono text-xs text-text-secondary">{ref.id}</td>
                       <td className="py-3">
-                        <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded whitespace-nowrap uppercase ${ref.status === 'TREATMENT_COMPLETED' || ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
+                        <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded whitespace-nowrap uppercase ${
+                          ref.status === 'TREATMENT_COMPLETED' || ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
                             ? 'text-success bg-success-bg border border-success/10'
-                            : ref.status === 'INFO_REQUESTED'
-                              ? 'text-warning bg-warning-bg border border-warning/10'
-                              : ref.status === 'REJECTED'
-                                ? 'text-danger bg-danger-bg border border-danger/10'
-                                : 'text-text-secondary bg-bg-primary border border-border-color'
+                            : ref.status === 'BILL_SUBMITTED'
+                              ? 'text-[#005f73] bg-[#005f73]/10 border border-[#005f73]/30 font-extrabold animate-pulse'
+                              : ref.status === 'BILL_REJECTED'
+                                ? 'text-danger bg-danger-bg border border-danger/20 font-bold'
+                                : ref.status === 'INFO_REQUESTED'
+                                  ? 'text-amber-700 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-500/30 font-extrabold animate-pulse'
+                                  : ref.status === 'REJECTED'
+                                    ? 'text-danger bg-danger-bg border border-danger/10'
+                                    : 'text-text-secondary bg-bg-primary border border-border-color'
                           }`}>
                           {ref.status === 'TREATMENT_COMPLETED'
                             ? 'Completed'
                             : ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
                               ? 'Approved'
-                              : ref.status === 'INFO_REQUESTED'
-                                ? 'Pending Info'
-                                : ref.status === 'REJECTED'
-                                  ? 'Rejected'
-                                  : 'Reviewing'}
+                              : ref.status === 'BILL_SUBMITTED'
+                                ? 'Bill Review'
+                                : ref.status === 'BILL_REJECTED'
+                                  ? 'Bill Disputed'
+                                  : ref.status === 'INFO_REQUESTED'
+                                    ? 'Action Required'
+                                    : ref.status === 'REJECTED'
+                                      ? 'Rejected'
+                                      : 'Reviewing'}
                         </span>
                       </td>
                     </tr>
@@ -214,23 +301,32 @@ export const Overview: React.FC = () => {
                       <span className="font-bold text-sm text-text-primary">{ref.patientName || ref.staffName}</span>
                       <span className="font-mono text-[0.7rem] text-text-muted mt-0.5">{ref.id}</span>
                     </div>
-                    <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded whitespace-nowrap uppercase ${ref.status === 'TREATMENT_COMPLETED' || ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
+                    <span className={`text-[0.7rem] font-bold px-2 py-0.5 rounded whitespace-nowrap uppercase ${
+                      ref.status === 'TREATMENT_COMPLETED' || ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
                         ? 'text-success bg-success-bg border border-success/10'
-                        : ref.status === 'INFO_REQUESTED'
-                          ? 'text-warning bg-warning-bg border border-warning/10'
-                          : ref.status === 'REJECTED'
-                            ? 'text-danger bg-danger-bg border border-danger/10'
-                            : 'text-text-secondary bg-bg-primary border border-border-color'
+                        : ref.status === 'BILL_SUBMITTED'
+                          ? 'text-[#005f73] bg-[#005f73]/10 border border-[#005f73]/30 font-extrabold animate-pulse'
+                          : ref.status === 'BILL_REJECTED'
+                            ? 'text-danger bg-danger-bg border border-danger/20 font-bold'
+                            : ref.status === 'INFO_REQUESTED'
+                              ? 'text-amber-700 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-500/30 font-extrabold animate-pulse'
+                              : ref.status === 'REJECTED'
+                                ? 'text-danger bg-danger-bg border border-danger/10'
+                                : 'text-text-secondary bg-bg-primary border border-border-color'
                       }`}>
                       {ref.status === 'TREATMENT_COMPLETED'
                         ? 'Completed'
                         : ref.status === 'APPROVED_FORWARDED' || ref.status === 'ACCEPTED'
                           ? 'Approved'
-                          : ref.status === 'INFO_REQUESTED'
-                            ? 'Pending Info'
-                            : ref.status === 'REJECTED'
-                              ? 'Rejected'
-                              : 'Reviewing'}
+                          : ref.status === 'BILL_SUBMITTED'
+                            ? 'Bill Review'
+                            : ref.status === 'BILL_REJECTED'
+                              ? 'Bill Disputed'
+                              : ref.status === 'INFO_REQUESTED'
+                                ? 'Action Required'
+                                : ref.status === 'REJECTED'
+                                  ? 'Rejected'
+                                  : 'Reviewing'}
                     </span>
                   </div>
                   

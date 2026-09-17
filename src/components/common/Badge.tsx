@@ -18,6 +18,10 @@ export const Badge: React.FC<BadgeProps> = ({ status }) => {
         return { className: 'badge badge-approved', text: 'Approved & Forwarded' };
       case 'ACCEPTED':
         return { className: 'badge badge-accepted', text: 'Accepted / In-Progress' };
+      case 'BILL_SUBMITTED':
+        return { className: 'badge badge-bill-submitted', text: 'Bill Review Required' };
+      case 'BILL_REJECTED':
+        return { className: 'badge badge-bill-rejected', text: 'Bill Disputed' };
       case 'TREATMENT_COMPLETED':
         return { className: 'badge badge-completed', text: 'Treatment Completed' };
       case 'EMERGENCY':

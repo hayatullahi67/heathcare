@@ -493,6 +493,16 @@ body {
   color: var(--success);
   border: 1px solid rgba(16, 185, 129, 0.15);
 }
+.badge-bill-submitted {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid rgba(217, 119, 6, 0.25);
+}
+.badge-bill-rejected {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid rgba(220, 38, 38, 0.25);
+}
 .badge-urgency-emergency {
   background-color: var(--danger-bg);
   color: var(--danger);

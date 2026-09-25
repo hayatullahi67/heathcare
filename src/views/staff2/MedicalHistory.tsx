@@ -571,26 +571,26 @@ export const MedicalHistory: React.FC = () => {
               <div style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem' }}>
                 <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Branch Controller</span>
                 <div style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0f19', border: '1px solid var(--border-color)', borderRadius: '6px', marginTop: '0.5rem' }}>
-                  {billReviewRef.treatmentReport.branchControllerSignatureImage ? (
-                    <img src={billReviewRef.treatmentReport.branchControllerSignatureImage} alt="Branch Controller Signature" style={{ maxHeight: '44px', maxWidth: '90%', objectFit: 'contain' }} />
+                  {(billReviewRef.treatmentReport.branchControllerSignatureImage || billReviewRef.branchControllerSignatureImage) ? (
+                    <img src={billReviewRef.treatmentReport.branchControllerSignatureImage || billReviewRef.branchControllerSignatureImage} alt="Branch Controller Signature" style={{ maxHeight: '44px', maxWidth: '90%', objectFit: 'contain' }} />
                   ) : (
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.branchControllerSignName || 'Endorsed'}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.branchControllerSignName || billReviewRef.branchControllerSignName || 'Endorsed'}</span>
                   )}
                 </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.35rem', display: 'block' }}>{billReviewRef.treatmentReport.branchControllerSignName || 'Branch Controller'}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.35rem', display: 'block' }}>{billReviewRef.treatmentReport.branchControllerSignName || billReviewRef.branchControllerSignName || 'Branch Controller'}</span>
               </div>
 
               {/* Branch Support */}
               <div style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem' }}>
                 <span style={{ display: 'block', fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Branch Support Officer</span>
                 <div style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0b0f19', border: '1px solid var(--border-color)', borderRadius: '6px', marginTop: '0.5rem' }}>
-                  {billReviewRef.treatmentReport.branchSupportSignatureImage ? (
-                    <img src={billReviewRef.treatmentReport.branchSupportSignatureImage} alt="Branch Support Signature" style={{ maxHeight: '44px', maxWidth: '90%', objectFit: 'contain' }} />
+                  {(billReviewRef.treatmentReport.branchSupportSignatureImage || billReviewRef.branchSupportSignatureImage) ? (
+                    <img src={billReviewRef.treatmentReport.branchSupportSignatureImage || billReviewRef.branchSupportSignatureImage} alt="Branch Support Signature" style={{ maxHeight: '44px', maxWidth: '90%', objectFit: 'contain' }} />
                   ) : (
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.branchSupportSignName || 'Endorsed'}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{billReviewRef.treatmentReport.branchSupportSignName || billReviewRef.branchSupportSignName || 'Endorsed'}</span>
                   )}
                 </div>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.35rem', display: 'block' }}>{billReviewRef.treatmentReport.branchSupportSignName || 'Branch Support Officer'}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.35rem', display: 'block' }}>{billReviewRef.treatmentReport.branchSupportSignName || billReviewRef.branchSupportSignName || 'Branch Support Officer'}</span>
               </div>
             </div>
           </div>
@@ -1486,7 +1486,7 @@ export const MedicalHistory: React.FC = () => {
                     </div>
 
                     {/* Branch Controller & Branch Support Endorsements */}
-                    {(showDetailedReport.treatmentReport.branchControllerSignatureImage || showDetailedReport.treatmentReport.branchControllerSignName || showDetailedReport.treatmentReport.branchSupportSignatureImage || showDetailedReport.treatmentReport.branchSupportSignName) && (
+                    {(showDetailedReport.branchControllerSignatureImage || showDetailedReport.branchControllerSignName || showDetailedReport.treatmentReport.branchControllerSignatureImage || showDetailedReport.treatmentReport.branchControllerSignName || showDetailedReport.branchSupportSignatureImage || showDetailedReport.branchSupportSignName || showDetailedReport.treatmentReport.branchSupportSignatureImage || showDetailedReport.treatmentReport.branchSupportSignName) && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                         {/* Branch Controller */}
                         <div style={{ padding: '0.75rem', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
@@ -1496,22 +1496,22 @@ export const MedicalHistory: React.FC = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                             <div>
                               <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Name: </span>
-                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{showDetailedReport.treatmentReport.branchControllerSignName || 'Branch Controller'}</strong>
+                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{showDetailedReport.treatmentReport.branchControllerSignName || showDetailedReport.branchControllerSignName || 'Branch Controller'}</strong>
                             </div>
                             <div style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-                              {showDetailedReport.treatmentReport.branchControllerSignatureImage ? (
+                              {(showDetailedReport.treatmentReport.branchControllerSignatureImage || showDetailedReport.branchControllerSignatureImage) ? (
                                 <img
-                                  src={showDetailedReport.treatmentReport.branchControllerSignatureImage}
+                                  src={showDetailedReport.treatmentReport.branchControllerSignatureImage || showDetailedReport.branchControllerSignatureImage}
                                   alt="Branch Controller Signature"
                                   style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain' }}
                                 />
                               ) : (
-                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{showDetailedReport.treatmentReport.branchControllerSignName || 'Endorsed'}</span>
+                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{showDetailedReport.treatmentReport.branchControllerSignName || showDetailedReport.branchControllerSignName || 'Endorsed'}</span>
                               )}
                             </div>
-                            {showDetailedReport.treatmentReport.branchControllerSignDate && (
+                            {(showDetailedReport.treatmentReport.branchControllerSignDate || showDetailedReport.branchControllerSignDate) && (
                               <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                                Endorsed: {new Date(showDetailedReport.treatmentReport.branchControllerSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                Endorsed: {new Date(showDetailedReport.treatmentReport.branchControllerSignDate || showDetailedReport.branchControllerSignDate!).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                               </span>
                             )}
                           </div>
@@ -1525,22 +1525,22 @@ export const MedicalHistory: React.FC = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                             <div>
                               <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Name: </span>
-                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{showDetailedReport.treatmentReport.branchSupportSignName || 'Branch Support Officer'}</strong>
+                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{showDetailedReport.treatmentReport.branchSupportSignName || showDetailedReport.branchSupportSignName || 'Branch Support Officer'}</strong>
                             </div>
                             <div style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-                              {showDetailedReport.treatmentReport.branchSupportSignatureImage ? (
+                              {(showDetailedReport.treatmentReport.branchSupportSignatureImage || showDetailedReport.branchSupportSignatureImage) ? (
                                 <img
-                                  src={showDetailedReport.treatmentReport.branchSupportSignatureImage}
+                                  src={showDetailedReport.treatmentReport.branchSupportSignatureImage || showDetailedReport.branchSupportSignatureImage}
                                   alt="Branch Support Signature"
                                   style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain' }}
                                 />
                               ) : (
-                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{showDetailedReport.treatmentReport.branchSupportSignName || 'Endorsed'}</span>
+                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{showDetailedReport.treatmentReport.branchSupportSignName || showDetailedReport.branchSupportSignName || 'Endorsed'}</span>
                               )}
                             </div>
-                            {showDetailedReport.treatmentReport.branchSupportSignDate && (
+                            {(showDetailedReport.treatmentReport.branchSupportSignDate || showDetailedReport.branchSupportSignDate) && (
                               <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                                Endorsed: {new Date(showDetailedReport.treatmentReport.branchSupportSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                Endorsed: {new Date(showDetailedReport.treatmentReport.branchSupportSignDate || showDetailedReport.branchSupportSignDate!).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                               </span>
                             )}
                           </div>

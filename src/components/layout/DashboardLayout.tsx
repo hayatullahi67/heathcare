@@ -151,7 +151,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </aside>
 
       {/* Sidebar - Mobile Drawer */}
-      <div className={`sidebar-mobile-overlay ${mobileMenuOpen ? 'open' : ''}`} onClick={() => setMobileMenuOpen(false)}>
+      <div
+        className={`sidebar-mobile-overlay ${mobileMenuOpen ? 'open' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+        style={{
+          display: mobileMenuOpen ? 'block' : 'none',
+          pointerEvents: mobileMenuOpen ? 'auto' : 'none',
+          visibility: mobileMenuOpen ? 'visible' : 'hidden'
+        }}
+      >
         <aside className={`sidebar-mobile ${mobileMenuOpen ? 'open' : ''}`} onClick={e => e.stopPropagation()}>
           <div className="sidebar-mobile-header">
             <div className="sidebar-logo">
@@ -224,7 +232,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Main Content Area */}
       <div className="main-content-wrapper">
         {/* Header */}
-        <header className="header">
+        <header className={`header ${notificationsOpen ? 'notifications-active' : ''}`}>
           <div className="header-left">
             <button className="mobile-toggle-btn" onClick={() => setMobileMenuOpen(true)}>
               <Menu size={24} />
@@ -241,7 +249,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
           <div className="header-right">
             {/* Notification Bell */}
-            <div className="notification-wrapper">
+            <div className={`notification-wrapper ${notificationsOpen ? 'active' : ''}`}>
               <button
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
                 className={`notification-bell ${unreadCount > 0 ? 'has-unread' : ''}`}
@@ -254,7 +262,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               {notificationsOpen && (
                 <>
                   <div className="notification-dropdown-backdrop" onClick={() => setNotificationsOpen(false)} />
-                  <div className="notification-dropdown glass-panel">
+                  <div className="notification-dropdown">
                     <div className="notif-header">
                       <h3>Notifications</h3>
                       {unreadCount > 0 && (
@@ -481,15 +489,20 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           inset: 0;
           background-color: rgba(0, 0, 0, 0.5);
           backdrop-filter: blur(2px);
+          -webkit-backdrop-filter: blur(2px);
           z-index: 1000;
           opacity: 0;
           pointer-events: none;
+          display: none;
+          visibility: hidden;
           transition: opacity 0.3s ease;
         }
 
         .sidebar-mobile-overlay.open {
           opacity: 1;
           pointer-events: auto;
+          display: block;
+          visibility: visible;
         }
 
         .sidebar-mobile {
@@ -552,7 +565,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           padding: 0 2rem;
           position: sticky;
           top: 0;
-          z-index: 90;
+          z-index: 500;
+          transition: z-index 0.1s ease;
+        }
+
+        .header.notifications-active {
+          z-index: 2000;
         }
 
         .header-left {
@@ -606,6 +624,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           position: relative;
         }
 
+        .notification-wrapper.active {
+          z-index: 2001;
+        }
+
         .notification-bell {
           background: transparent;
           border: none;
@@ -645,36 +667,54 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         .notification-dropdown-backdrop {
           position: fixed;
           inset: 0;
-          z-index: 150;
+          z-index: 2000;
+          background-color: transparent;
         }
 
         .notification-dropdown {
           position: absolute;
-          top: 100%;
+          top: calc(100% + 0.65rem);
           right: 0;
-          width: 320px;
-          max-height: 400px;
-          overflow-y: auto;
-          margin-top: 0.75rem;
+          width: 360px;
+          max-width: min(380px, calc(100vw - 2rem));
+          max-height: 480px;
+          background-color: var(--bg-secondary) !important;
+          border: 1px solid var(--border-color);
           border-radius: var(--radius-md);
-          box-shadow: var(--shadow-lg);
-          z-index: 200;
+          box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--border-color);
+          z-index: 2001 !important;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
+          animation: notifDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes notifDropdownFadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-8px) scale(0.97);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
         }
 
         .notif-header {
-          padding: 1rem;
+          padding: 0.875rem 1.125rem;
+          background-color: var(--bg-secondary);
           border-bottom: 1px solid var(--border-color);
           display: flex;
           align-items: center;
           justify-content: space-between;
+          flex-shrink: 0;
         }
 
         .notif-header h3 {
           font-size: 0.9rem;
           font-weight: 700;
           margin: 0;
+          color: var(--text-primary);
         }
 
         .mark-all-read {
@@ -684,26 +724,33 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           border: none;
           cursor: pointer;
           font-weight: 600;
+          padding: 0.2rem 0.5rem;
+          border-radius: var(--radius-sm);
+          transition: var(--transition);
         }
 
         .mark-all-read:hover {
           text-decoration: underline;
+          background-color: var(--primary-lightest);
         }
 
         .notif-body {
           overflow-y: auto;
-          max-height: 320px;
+          max-height: 380px;
+          background-color: var(--bg-secondary);
         }
 
         .notif-empty {
-          padding: 2rem;
+          padding: 2.5rem 1rem;
           text-align: center;
           font-size: 0.85rem;
           color: var(--text-muted);
+          background-color: var(--bg-secondary);
         }
 
         .notif-item {
-          padding: 0.875rem 1rem;
+          padding: 0.875rem 1.125rem;
+          background-color: var(--bg-secondary);
           border-bottom: 1px solid var(--border-color);
           display: flex;
           gap: 0.75rem;
@@ -721,7 +768,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         }
 
         .notif-item.unread {
-          background-color: var(--primary-lightest);
+          background-color: rgba(14, 165, 233, 0.08);
+        }
+
+        .notif-item.unread:hover {
+          background-color: rgba(14, 165, 233, 0.16);
         }
 
         .notif-bullet {
@@ -827,6 +878,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             display: flex !important;
           }
           .sidebar-mobile-overlay {
+            display: none;
+          }
+          .sidebar-mobile-overlay.open {
             display: block !important;
           }
         }

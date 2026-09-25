@@ -25,7 +25,8 @@ import {
   AlertCircle,
   RefreshCw,
   Clock,
-  PenTool
+  PenTool,
+  ShieldCheck
 } from 'lucide-react';
 
 const SignaturePadModal: React.FC<{
@@ -239,6 +240,7 @@ export const PatientTreatment: React.FC = () => {
 
   // Doctor Digital Signature Mode & State
   const [doctorSignMethod, setDoctorSignMethod] = useState<'DRAW' | 'UPLOAD'>('DRAW');
+  const [patientSignMethod, setPatientSignMethod] = useState<'DRAW' | 'UPLOAD'>('DRAW');
   const [doctorSignatureDataUrl, setDoctorSignatureDataUrl] = useState<string>('');
   const [patientSignatureDataUrl, setPatientSignatureDataUrl] = useState<string>('');
 
@@ -626,14 +628,14 @@ export const PatientTreatment: React.FC = () => {
       doctorSignatureImage: docSig || undefined,
       doctorSignDate: doctorSignDate || new Date().toISOString().split('T')[0],
 
-      // Branch Controller & Support Signatures
-      branchControllerSignName: branchControllerSignName || undefined,
-      branchControllerSignatureImage: branchCtrlSig || undefined,
-      branchControllerSignDate: branchControllerSignDate || undefined,
+      // Branch Controller & Support Signatures (Inherited from Admin Referral Authorization)
+      branchControllerSignName: treatmentRef.branchControllerSignName || treatmentRef.treatmentReport?.branchControllerSignName || branchControllerSignName || undefined,
+      branchControllerSignatureImage: treatmentRef.branchControllerSignatureImage || treatmentRef.treatmentReport?.branchControllerSignatureImage || branchCtrlSig || undefined,
+      branchControllerSignDate: treatmentRef.branchControllerSignDate || treatmentRef.treatmentReport?.branchControllerSignDate || branchControllerSignDate || undefined,
 
-      branchSupportSignName: branchSupportSignName || undefined,
-      branchSupportSignatureImage: branchSuppSig || undefined,
-      branchSupportSignDate: branchSupportSignDate || undefined,
+      branchSupportSignName: treatmentRef.branchSupportSignName || treatmentRef.treatmentReport?.branchSupportSignName || branchSupportSignName || undefined,
+      branchSupportSignatureImage: treatmentRef.branchSupportSignatureImage || treatmentRef.treatmentReport?.branchSupportSignatureImage || branchSuppSig || undefined,
+      branchSupportSignDate: treatmentRef.branchSupportSignDate || treatmentRef.treatmentReport?.branchSupportSignDate || branchSupportSignDate || undefined,
 
       // Section D Billing Form Fields (All 15 items with rates)
       billingRegistration: parseFloat(billRegistration) || 0,
@@ -661,11 +663,11 @@ export const PatientTreatment: React.FC = () => {
       billingMiscellaneous: parseFloat(billMiscellaneous) || 0,
       billingTotal: total,
 
-      // Section D Confirmation Fields
-      confirmedByPatientName: patientConfirmName,
-      patientSignature: patientSignature || patientSig ? 'Digitally Signed' : 'Not Signed',
-      patientSignatureImage: patientSig || undefined,
-      patientSignDate: patientSignDate || new Date().toISOString().split('T')[0]
+      // Beneficiary Confirmation (signed by patient during bill review in their dashboard)
+      confirmedByPatientName: treatmentRef.treatmentReport?.confirmedByPatientName || undefined,
+      patientSignature: treatmentRef.treatmentReport?.patientSignature || undefined,
+      patientSignatureImage: treatmentRef.treatmentReport?.patientSignatureImage || undefined,
+      patientSignDate: treatmentRef.treatmentReport?.patientSignDate || undefined
     };
 
     let res;
@@ -996,11 +998,18 @@ export const PatientTreatment: React.FC = () => {
                         </td>
                         <td className="treatment-billing-amount">
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="decimal"
+                            pattern="[0-9]*"
                             className="treatment-amount-input"
                             placeholder="0"
                             value={item.value}
-                            onChange={e => item.setValue(e.target.value)}
+                            onChange={e => {
+                              const val = e.target.value.replace(/[^0-9.]/g, '');
+                              const parts = val.split('.');
+                              const sanitized = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : val;
+                              item.setValue(sanitized);
+                            }}
                           />
                         </td>
                       </tr>
@@ -1026,16 +1035,75 @@ export const PatientTreatment: React.FC = () => {
               <div className="treatment-signatures-section">
                 <h3 className="treatment-signatures-title">
                   <PenTool size={18} className="treatment-card-icon" />
-                  <span>Official Authorizations &amp; Endorsement Signatures</span>
+                  <span>Hospital Certification &amp; Signatures</span>
                 </h3>
+
+                {/* Official Bank Authorization (Section B - Authorized by Admin) */}
+                {(treatmentRef?.branchControllerSignName || treatmentRef?.branchControllerSignatureImage || treatmentRef?.branchSupportSignName || treatmentRef?.branchSupportSignatureImage) && (
+                  <div style={{ backgroundColor: 'rgba(14, 165, 233, 0.05)', border: '1px solid rgba(14, 165, 233, 0.2)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <ShieldCheck size={18} style={{ color: 'var(--primary)' }} />
+                        <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                          Section B: Central Bank Management Authorizations (Approved by Admin)
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '4px', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                        ✓ Authorized by Central Bank Admin
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
+                      {/* Branch Controller */}
+                      <div style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>1. Branch Controller</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {treatmentRef.branchControllerSignName || 'Branch Controller'}
+                        </span>
+                        <div style={{ height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                          {treatmentRef.branchControllerSignatureImage ? (
+                            <img src={treatmentRef.branchControllerSignatureImage} alt="Branch Controller Signature" style={{ maxHeight: '38px', maxWidth: '90%', objectFit: 'contain' }} />
+                          ) : (
+                            <span style={{ fontStyle: 'italic', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Official Signature on File</span>
+                          )}
+                        </div>
+                        {treatmentRef.branchControllerSignDate && (
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                            Date: {treatmentRef.branchControllerSignDate}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Branch Support */}
+                      <div style={{ backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>2. Branch Support Officer</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {treatmentRef.branchSupportSignName || 'Branch Support Officer'}
+                        </span>
+                        <div style={{ height: '46px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                          {treatmentRef.branchSupportSignatureImage ? (
+                            <img src={treatmentRef.branchSupportSignatureImage} alt="Branch Support Signature" style={{ maxHeight: '38px', maxWidth: '90%', objectFit: 'contain' }} />
+                          ) : (
+                            <span style={{ fontStyle: 'italic', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Official Signature on File</span>
+                          )}
+                        </div>
+                        {treatmentRef.branchSupportSignDate && (
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                            Date: {treatmentRef.branchSupportSignDate}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="treatment-signatures-grid">
                   
-                  {/* Signature 1: Attending Doctor */}
-                  <div className="treatment-sig-card">
+                  {/* Signature: Attending Doctor */}
+                  <div className="treatment-sig-card" style={{ maxWidth: '520px' }}>
                     <div className="treatment-sig-header">
                       <span className="treatment-sig-title">
-                        1. Attending Doctor
+                        Attending Doctor / Physician Endorsement
                       </span>
                       <div className="treatment-sig-toggle-box">
                         <button
@@ -1127,148 +1195,6 @@ export const PatientTreatment: React.FC = () => {
                       className="treatment-sig-input"
                       value={doctorSignDate}
                       onChange={e => setDoctorSignDate(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Signature 2: Branch Controller Endorsement */}
-                  <div className="treatment-sig-card">
-                    <span className="treatment-sig-title" style={{ display: 'block', marginBottom: '0.75rem' }}>
-                      2. Branch Controller Endorsement
-                    </span>
-
-                    <label className="treatment-label">
-                      Branch Controller Name
-                    </label>
-                    <input
-                      type="text"
-                      className="treatment-sig-input"
-                      placeholder="e.g. Alh. Ibrahim Garba"
-                      value={branchControllerSignName}
-                      onChange={e => setBranchControllerSignName(e.target.value)}
-                    />
-
-                    <label className="treatment-label">
-                      Signature Image
-                    </label>
-                    {branchControllerSignatureDataUrl ? (
-                      <div className="treatment-sig-display-box">
-                        <img src={branchControllerSignatureDataUrl} alt="Branch Controller Signature" style={{ maxHeight: '55px', maxWidth: '100%', objectFit: 'contain' }} />
-                        <button
-                          type="button"
-                          onClick={() => setBranchControllerSignatureDataUrl('')}
-                          style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.2)', border: 'none', borderRadius: '50%', width: '22px', height: '22px', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800 }}
-                          title="Remove signature"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                        <label className="treatment-sig-upload-box" style={{ flex: 1 }}>
-                          <Upload size={18} style={{ color: 'var(--primary)' }} />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)' }}>Upload Signature</span>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>PNG/JPG</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={e => {
-                              if (e.target.files?.[0]) {
-                                handleImageUpload(e.target.files[0], setBranchControllerSignatureDataUrl);
-                              }
-                            }}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setActiveSignModal('BRANCH_CONTROLLER')}
-                          style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)', cursor: 'pointer', width: '70px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.2rem' }}
-                        >
-                          <span>✍️</span>
-                          <span>Draw</span>
-                        </button>
-                      </div>
-                    )}
-
-                    <label className="treatment-label">
-                      Date Endorsed
-                    </label>
-                    <input
-                      type="date"
-                      className="treatment-sig-input"
-                      value={branchControllerSignDate}
-                      onChange={e => setBranchControllerSignDate(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Signature 3: Branch Support Endorsement */}
-                  <div className="treatment-sig-card">
-                    <span className="treatment-sig-title" style={{ display: 'block', marginBottom: '0.75rem' }}>
-                      3. Branch Support Endorsement
-                    </span>
-
-                    <label className="treatment-label">
-                      Branch Support Officer Name
-                    </label>
-                    <input
-                      type="text"
-                      className="treatment-sig-input"
-                      placeholder="e.g. Mrs. Ngozi Adeleke"
-                      value={branchSupportSignName}
-                      onChange={e => setBranchSupportSignName(e.target.value)}
-                    />
-
-                    <label className="treatment-label">
-                      Signature Image
-                    </label>
-                    {branchSupportSignatureDataUrl ? (
-                      <div className="treatment-sig-display-box">
-                        <img src={branchSupportSignatureDataUrl} alt="Branch Support Signature" style={{ maxHeight: '55px', maxWidth: '100%', objectFit: 'contain' }} />
-                        <button
-                          type="button"
-                          onClick={() => setBranchSupportSignatureDataUrl('')}
-                          style={{ position: 'absolute', top: '4px', right: '4px', background: 'rgba(239, 68, 68, 0.2)', border: 'none', borderRadius: '50%', width: '22px', height: '22px', color: '#f87171', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 800 }}
-                          title="Remove signature"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                        <label className="treatment-sig-upload-box" style={{ flex: 1 }}>
-                          <Upload size={18} style={{ color: 'var(--primary)' }} />
-                          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary)' }}>Upload Signature</span>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>PNG/JPG</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={e => {
-                              if (e.target.files?.[0]) {
-                                handleImageUpload(e.target.files[0], setBranchSupportSignatureDataUrl);
-                              }
-                            }}
-                          />
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setActiveSignModal('BRANCH_SUPPORT')}
-                          style={{ border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', backgroundColor: 'var(--bg-secondary)', cursor: 'pointer', width: '70px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.2rem' }}
-                        >
-                          <span>✍️</span>
-                          <span>Draw</span>
-                        </button>
-                      </div>
-                    )}
-
-                    <label className="treatment-label">
-                      Date Endorsed
-                    </label>
-                    <input
-                      type="date"
-                      className="treatment-sig-input"
-                      value={branchSupportSignDate}
-                      onChange={e => setBranchSupportSignDate(e.target.value)}
                     />
                   </div>
 
@@ -2051,34 +1977,43 @@ export const PatientTreatment: React.FC = () => {
                         <label htmlFor="vital-pulse" style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Pulse (bpm)</label>
                         <input
                           id="vital-pulse"
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           className="form-control text-xs"
                           style={{ padding: '0.35rem' }}
                           value={pulseRate}
-                          onChange={e => setPulseRate(e.target.value)}
+                          onChange={e => setPulseRate(e.target.value.replace(/\D/g, ''))}
                         />
                       </div>
                       <div className="form-group-sm">
                         <label htmlFor="vital-temp" style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>Temp (°C)</label>
                         <input
                           id="vital-temp"
-                          type="number"
-                          step="0.1"
+                          type="text"
+                          inputMode="decimal"
                           className="form-control text-xs"
                           style={{ padding: '0.35rem' }}
                           value={temperature}
-                          onChange={e => setTemperature(e.target.value)}
+                          onChange={e => {
+                            const val = e.target.value.replace(/[^0-9.]/g, '');
+                            const parts = val.split('.');
+                            const sanitized = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : val;
+                            setTemperature(sanitized);
+                          }}
                         />
                       </div>
                       <div className="form-group-sm">
                         <label htmlFor="vital-spo2" style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>SpO2 (%)</label>
                         <input
                           id="vital-spo2"
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           className="form-control text-xs"
                           style={{ padding: '0.35rem' }}
                           value={oxygenSaturation}
-                          onChange={e => setOxygenSaturation(e.target.value)}
+                          onChange={e => setOxygenSaturation(e.target.value.replace(/\D/g, ''))}
                         />
                       </div>
                     </div>
@@ -2324,7 +2259,7 @@ export const PatientTreatment: React.FC = () => {
                     </div>
 
                     {/* Branch Controller & Branch Support Endorsements */}
-                    {(selectedDischargedRef.treatmentReport.branchControllerSignatureImage || selectedDischargedRef.treatmentReport.branchControllerSignName || selectedDischargedRef.treatmentReport.branchSupportSignatureImage || selectedDischargedRef.treatmentReport.branchSupportSignName) && (
+                    {(selectedDischargedRef.branchControllerSignatureImage || selectedDischargedRef.branchControllerSignName || selectedDischargedRef.treatmentReport.branchControllerSignatureImage || selectedDischargedRef.treatmentReport.branchControllerSignName || selectedDischargedRef.branchSupportSignatureImage || selectedDischargedRef.branchSupportSignName || selectedDischargedRef.treatmentReport.branchSupportSignatureImage || selectedDischargedRef.treatmentReport.branchSupportSignName) && (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                         {/* Branch Controller */}
                         <div className="p-3 bg-paper-light border rounded" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
@@ -2334,22 +2269,22 @@ export const PatientTreatment: React.FC = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                             <div>
                               <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Name: </span>
-                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{selectedDischargedRef.treatmentReport.branchControllerSignName || 'Branch Controller'}</strong>
+                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{selectedDischargedRef.treatmentReport.branchControllerSignName || selectedDischargedRef.branchControllerSignName || 'Branch Controller'}</strong>
                             </div>
                             <div className="signature-check-wrapper checked" style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-                              {selectedDischargedRef.treatmentReport.branchControllerSignatureImage ? (
+                              {(selectedDischargedRef.treatmentReport.branchControllerSignatureImage || selectedDischargedRef.branchControllerSignatureImage) ? (
                                 <img
-                                  src={selectedDischargedRef.treatmentReport.branchControllerSignatureImage}
+                                  src={selectedDischargedRef.treatmentReport.branchControllerSignatureImage || selectedDischargedRef.branchControllerSignatureImage}
                                   alt="Branch Controller Signature"
                                   style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain' }}
                                 />
                               ) : (
-                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{selectedDischargedRef.treatmentReport.branchControllerSignName || 'Endorsed'}</span>
+                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{selectedDischargedRef.treatmentReport.branchControllerSignName || selectedDischargedRef.branchControllerSignName || 'Endorsed'}</span>
                               )}
                             </div>
-                            {selectedDischargedRef.treatmentReport.branchControllerSignDate && (
+                            {(selectedDischargedRef.treatmentReport.branchControllerSignDate || selectedDischargedRef.branchControllerSignDate) && (
                               <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                                Endorsed Date: {new Date(selectedDischargedRef.treatmentReport.branchControllerSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                Endorsed Date: {new Date(selectedDischargedRef.treatmentReport.branchControllerSignDate || selectedDischargedRef.branchControllerSignDate!).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                               </span>
                             )}
                           </div>
@@ -2363,22 +2298,22 @@ export const PatientTreatment: React.FC = () => {
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                             <div>
                               <span style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Name: </span>
-                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{selectedDischargedRef.treatmentReport.branchSupportSignName || 'Branch Support Officer'}</strong>
+                              <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>{selectedDischargedRef.treatmentReport.branchSupportSignName || selectedDischargedRef.branchSupportSignName || 'Branch Support Officer'}</strong>
                             </div>
                             <div className="signature-check-wrapper checked" style={{ height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px' }}>
-                              {selectedDischargedRef.treatmentReport.branchSupportSignatureImage ? (
+                              {(selectedDischargedRef.treatmentReport.branchSupportSignatureImage || selectedDischargedRef.branchSupportSignatureImage) ? (
                                 <img
-                                  src={selectedDischargedRef.treatmentReport.branchSupportSignatureImage}
+                                  src={selectedDischargedRef.treatmentReport.branchSupportSignatureImage || selectedDischargedRef.branchSupportSignatureImage}
                                   alt="Branch Support Signature"
                                   style={{ maxHeight: '42px', maxWidth: '100%', objectFit: 'contain' }}
                                 />
                               ) : (
-                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{selectedDischargedRef.treatmentReport.branchSupportSignName || 'Endorsed'}</span>
+                                <span style={{ fontFamily: "'Herr Von Muellerhoff', cursive", fontSize: '1.8rem', color: '#1e3a8a' }}>{selectedDischargedRef.treatmentReport.branchSupportSignName || selectedDischargedRef.branchSupportSignName || 'Endorsed'}</span>
                               )}
                             </div>
-                            {selectedDischargedRef.treatmentReport.branchSupportSignDate && (
+                            {(selectedDischargedRef.treatmentReport.branchSupportSignDate || selectedDischargedRef.branchSupportSignDate) && (
                               <span style={{ fontSize: '0.65rem', color: '#64748b' }}>
-                                Endorsed Date: {new Date(selectedDischargedRef.treatmentReport.branchSupportSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                                Endorsed Date: {new Date(selectedDischargedRef.treatmentReport.branchSupportSignDate || selectedDischargedRef.branchSupportSignDate!).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
                               </span>
                             )}
                           </div>
@@ -2754,10 +2689,13 @@ export const PatientTreatment: React.FC = () => {
           border: 1px solid var(--border-color);
           border-radius: 10px;
           padding: 0.7rem 1rem;
-          font-size: 0.9rem;
+          font-size: 0.95rem;
           color: var(--text-primary);
+          -webkit-text-fill-color: var(--text-primary);
           outline: none;
           color-scheme: dark;
+          -webkit-user-select: text;
+          user-select: text;
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .treatment-input:focus {
@@ -2771,12 +2709,15 @@ export const PatientTreatment: React.FC = () => {
           border: 1px solid var(--border-color);
           border-radius: 10px;
           padding: 0.75rem 1rem;
-          font-size: 0.875rem;
+          font-size: 0.95rem;
           color: var(--text-primary);
+          -webkit-text-fill-color: var(--text-primary);
           outline: none;
           resize: vertical;
           font-family: inherit;
           color-scheme: dark;
+          -webkit-user-select: text;
+          user-select: text;
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .treatment-textarea:focus {
@@ -2803,6 +2744,7 @@ export const PatientTreatment: React.FC = () => {
 
         .treatment-table-wrapper {
           overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
           margin-bottom: 1.5rem;
           border: 1px solid var(--border-color);
           border-radius: 12px;
@@ -2879,9 +2821,12 @@ export const PatientTreatment: React.FC = () => {
           padding: 0.4rem 0.5rem;
           font-size: 0.825rem;
           color: var(--text-primary);
+          -webkit-text-fill-color: var(--text-primary);
           outline: none;
           font-weight: 600;
           color-scheme: dark;
+          -webkit-user-select: text;
+          user-select: text;
           text-align: center;
         }
         .treatment-input-sm:focus {
@@ -2905,15 +2850,34 @@ export const PatientTreatment: React.FC = () => {
           border: 1px solid var(--border-color);
           border-radius: 8px;
           padding: 0.5rem 0.75rem;
-          font-size: 0.875rem;
+          font-size: 1rem;
           text-align: right;
           outline: none;
           font-weight: 600;
           color: var(--text-primary);
+          -webkit-text-fill-color: var(--text-primary);
           color-scheme: dark;
+          -webkit-user-select: text;
+          user-select: text;
+          -webkit-appearance: none;
+          -moz-appearance: textfield;
+          appearance: none;
+          touch-action: manipulation;
+        }
+        .treatment-amount-input::-webkit-outer-spin-button,
+        .treatment-amount-input::-webkit-inner-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
         }
         .treatment-amount-input:focus {
           border-color: var(--primary);
+          box-shadow: 0 0 0 2px var(--primary-light);
+        }
+        @media (max-width: 768px) {
+          .treatment-amount-input {
+            width: 125px;
+            font-size: 16px !important;
+          }
         }
 
         .treatment-calc-amount {
@@ -3033,12 +2997,15 @@ export const PatientTreatment: React.FC = () => {
           border: 1px solid var(--border-color);
           border-radius: 6px;
           padding: 0.45rem 0.65rem;
-          font-size: 0.85rem;
+          font-size: 0.9rem;
           font-weight: 600;
           color: var(--text-primary);
+          -webkit-text-fill-color: var(--text-primary);
           margin-bottom: 0.75rem;
           outline: none;
           color-scheme: dark;
+          -webkit-user-select: text;
+          user-select: text;
         }
         .treatment-sig-input:focus {
           border-color: var(--primary);

@@ -32,7 +32,16 @@ interface ReferralContextType {
   updateReferralStatus: (
     referralId: string,
     status: ReferralStatus,
-    notes?: { adminNotes?: string; moreInfoNotes?: string }
+    notes?: {
+      adminNotes?: string;
+      moreInfoNotes?: string;
+      branchControllerSignName?: string;
+      branchControllerSignatureImage?: string;
+      branchControllerSignDate?: string;
+      branchSupportSignName?: string;
+      branchSupportSignatureImage?: string;
+      branchSupportSignDate?: string;
+    }
   ) => Promise<{ success: boolean; message: string }>;
   resubmitReferral: (
     referralId: string,
@@ -281,7 +290,16 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const updateReferralStatus = async (
     referralId: string,
     status: ReferralStatus,
-    notes?: { adminNotes?: string; moreInfoNotes?: string }
+    notes?: {
+      adminNotes?: string;
+      moreInfoNotes?: string;
+      branchControllerSignName?: string;
+      branchControllerSignatureImage?: string;
+      branchControllerSignDate?: string;
+      branchSupportSignName?: string;
+      branchSupportSignatureImage?: string;
+      branchSupportSignDate?: string;
+    }
   ): Promise<{ success: boolean; message: string }> => {
     if (!currentUser || currentUser.role !== 'SUPER_ADMIN') {
       return { success: false, message: 'Permission denied. Admins only.' };
@@ -294,7 +312,7 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return { success: false, message: 'Referral request not found.' };
     }
 
-    const updatedRef = {
+    const updatedRef: ReferralRequest = {
       ...refObj,
       status: status === 'APPROVED_FORWARDED' ? 'ACCEPTED' : status,
       updatedAt: new Date().toISOString()
@@ -306,6 +324,24 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     if (notes?.moreInfoNotes !== undefined) {
       updatedRef.moreInfoRequestedNotes = notes.moreInfoNotes;
       updatedRef.isResubmitted = false;
+    }
+    if (notes?.branchControllerSignName !== undefined) {
+      updatedRef.branchControllerSignName = notes.branchControllerSignName;
+    }
+    if (notes?.branchControllerSignatureImage !== undefined) {
+      updatedRef.branchControllerSignatureImage = notes.branchControllerSignatureImage;
+    }
+    if (notes?.branchControllerSignDate !== undefined) {
+      updatedRef.branchControllerSignDate = notes.branchControllerSignDate;
+    }
+    if (notes?.branchSupportSignName !== undefined) {
+      updatedRef.branchSupportSignName = notes.branchSupportSignName;
+    }
+    if (notes?.branchSupportSignatureImage !== undefined) {
+      updatedRef.branchSupportSignatureImage = notes.branchSupportSignatureImage;
+    }
+    if (notes?.branchSupportSignDate !== undefined) {
+      updatedRef.branchSupportSignDate = notes.branchSupportSignDate;
     }
 
     try {
@@ -486,7 +522,13 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       ...report,
       id: `rep-${Date.now()}`,
       completedAt: new Date().toISOString(),
-      billStatus: 'PENDING_BENEFICIARY'
+      billStatus: 'PENDING_BENEFICIARY',
+      branchControllerSignName: refObj.branchControllerSignName || report.branchControllerSignName,
+      branchControllerSignatureImage: refObj.branchControllerSignatureImage || report.branchControllerSignatureImage,
+      branchControllerSignDate: refObj.branchControllerSignDate || report.branchControllerSignDate,
+      branchSupportSignName: refObj.branchSupportSignName || report.branchSupportSignName,
+      branchSupportSignatureImage: refObj.branchSupportSignatureImage || report.branchSupportSignatureImage,
+      branchSupportSignDate: refObj.branchSupportSignDate || report.branchSupportSignDate,
     };
 
     const updatedRef = {

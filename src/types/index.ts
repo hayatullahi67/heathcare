@@ -139,6 +139,14 @@ export interface ReferralRequest {
   branchCenter?: string;
   residentialAddress?: string;
   isSigned?: boolean;
+  
+  // Section B Official Bank Management Authorization (Admin Endorsement)
+  branchControllerSignatureImage?: string;
+  branchControllerSignName?: string;
+  branchControllerSignDate?: string;
+  branchSupportSignatureImage?: string;
+  branchSupportSignName?: string;
+  branchSupportSignDate?: string;
 
   // Hospital Actions & Clinical Logs Extensions
   progressNotes?: {

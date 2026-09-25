@@ -441,6 +441,27 @@ body {
   box-shadow: 0 0 0 3px var(--primary-light);
 }
 
+/* Universal Form Input Text Selection & WebKit Accessibility */
+input, textarea, select {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Prevent iOS Safari automatic zoom on mobile devices */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="email"],
+  input[type="password"],
+  input[type="date"],
+  input[type="time"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Form Helper Texts (Critical for self-explanatory workflow) */
 .form-help-text {
   font-size: 0.75rem;
@@ -774,3 +795,16 @@ body {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+
+/* Global Notification Dropdown Layering & Stacking Context across all dashboards */
+.notification-dropdown {
+  background-color: var(--bg-secondary) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.45), 0 0 0 1px var(--border-color) !important;
+  z-index: 2001 !important;
+}
+
+.notification-dropdown-backdrop {
+  z-index: 2000 !important;
+}
+

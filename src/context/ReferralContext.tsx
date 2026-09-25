@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import type { ReferralRequest, AppNotification, ReferralStatus, TreatmentReport, MockFile, SystemActivityLog } from '../types';
+import type { ReferralRequest, AppNotification, ReferralStatus, TreatmentReport, MockFile, SystemActivityLog, SavedAdminSignatures } from '../types';
 import { useAuth } from './AuthContext';
 import { collection, onSnapshot, doc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -7,6 +7,14 @@ import { db } from '../firebase';
 interface ReferralContextType {
   referrals: ReferralRequest[];
   notifications: AppNotification[];
+  savedAdminSignatures: SavedAdminSignatures;
+  saveAdminSignatureProfile: (
+    type: 'BRANCH_CONTROLLER' | 'BRANCH_SUPPORT',
+    profile: { name: string; signatureImage: string }
+  ) => Promise<{ success: boolean; message: string }>;
+  deleteAdminSignatureProfile: (
+    type: 'BRANCH_CONTROLLER' | 'BRANCH_SUPPORT'
+  ) => Promise<{ success: boolean; message: string }>;
   createReferral: (
     hospitalId: string,
     hospitalName: string,
@@ -116,6 +124,31 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [referrals, setReferrals] = useState<ReferralRequest[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [activityLogs, setActivityLogs] = useState<SystemActivityLog[]>([]);
+  const [savedAdminSignatures, setSavedAdminSignatures] = useState<SavedAdminSignatures>(() => {
+    try {
+      const cached = localStorage.getItem('carelink_admin_saved_signatures');
+      return cached ? JSON.parse(cached) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  // Firestore Bindings for real-time admin saved signatures
+  useEffect(() => {
+    const unsubscribe = onSnapshot(doc(db, 'settings', 'adminSignatures'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as SavedAdminSignatures;
+        setSavedAdminSignatures(data || {});
+        try {
+          localStorage.setItem('carelink_admin_saved_signatures', JSON.stringify(data || {}));
+        } catch {}
+      }
+    }, (error) => {
+      console.warn("Firestore admin signatures sync notice:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Firestore Bindings for real-time referrals list syncing
   useEffect(() => {
@@ -201,6 +234,68 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       await setDoc(doc(db, 'notifications', newNotif.id), newNotif);
     } catch (e) {
       console.error("Error writing notification to Firestore:", e);
+    }
+  };
+
+  const saveAdminSignatureProfile = async (
+    type: 'BRANCH_CONTROLLER' | 'BRANCH_SUPPORT',
+    profile: { name: string; signatureImage: string }
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const now = new Date().toISOString();
+      const updatedProfile = {
+        name: profile.name.trim(),
+        signatureImage: profile.signatureImage,
+        updatedAt: now
+      };
+
+      const updated = {
+        ...savedAdminSignatures,
+        [type === 'BRANCH_CONTROLLER' ? 'branchController' : 'branchSupport']: updatedProfile
+      };
+
+      setSavedAdminSignatures(updated);
+      try {
+        localStorage.setItem('carelink_admin_saved_signatures', JSON.stringify(updated));
+      } catch {}
+
+      await setDoc(doc(db, 'settings', 'adminSignatures'), updated, { merge: true });
+      logActivity(
+        'UPDATE_ADMIN_SIGNATURE',
+        `Saved official signature preset for ${type === 'BRANCH_CONTROLLER' ? 'Branch Controller' : 'Branch Support Officer'} (${profile.name.trim()}).`
+      );
+      return { success: true, message: 'Signature profile saved successfully.' };
+    } catch (e: any) {
+      console.error("Error saving admin signature profile:", e);
+      return { success: false, message: e.message || 'Failed to save signature profile.' };
+    }
+  };
+
+  const deleteAdminSignatureProfile = async (
+    type: 'BRANCH_CONTROLLER' | 'BRANCH_SUPPORT'
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const updated = { ...savedAdminSignatures };
+      if (type === 'BRANCH_CONTROLLER') {
+        delete updated.branchController;
+      } else {
+        delete updated.branchSupport;
+      }
+
+      setSavedAdminSignatures(updated);
+      try {
+        localStorage.setItem('carelink_admin_saved_signatures', JSON.stringify(updated));
+      } catch {}
+
+      await setDoc(doc(db, 'settings', 'adminSignatures'), updated);
+      logActivity(
+        'DELETE_ADMIN_SIGNATURE',
+        `Removed saved signature preset for ${type === 'BRANCH_CONTROLLER' ? 'Branch Controller' : 'Branch Support Officer'}.`
+      );
+      return { success: true, message: 'Saved signature preset removed.' };
+    } catch (e: any) {
+      console.error("Error deleting admin signature profile:", e);
+      return { success: false, message: e.message || 'Failed to delete signature preset.' };
     }
   };
 
@@ -957,6 +1052,9 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         clearNotifications,
         getReferralsForUser,
         getNotificationsForUser,
+        savedAdminSignatures,
+        saveAdminSignatureProfile,
+        deleteAdminSignatureProfile,
         activityLogs,
         logActivity
       }}

@@ -23,7 +23,12 @@ import {
   AlertTriangle,
   Receipt,
   PenTool,
-  Upload
+  Upload,
+  Trash2,
+  Save,
+  RotateCcw,
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { getReferralIdInfo, type ReferralRequest } from '../../types';
 
@@ -211,7 +216,13 @@ const handleImageUpload = (file: File, callback: (dataUrl: string) => void) => {
 };
 
 export const ReferralReview: React.FC = () => {
-  const { referrals, updateReferralStatus } = useReferral();
+  const {
+    referrals,
+    updateReferralStatus,
+    savedAdminSignatures,
+    saveAdminSignatureProfile,
+    deleteAdminSignatureProfile
+  } = useReferral();
   const [viewMode, setViewMode] = useState<'LIST' | 'DETAIL'>('LIST');
   const [selectedId, setSelectedId] = useState<string | null>(() => {
     return referrals.length > 0 ? referrals[0].id : null;
@@ -228,21 +239,108 @@ export const ReferralReview: React.FC = () => {
   const [adminNotes, setAdminNotes] = useState('');
   const [moreInfoNotes, setMoreInfoNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [presetNotice, setPresetNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   // Section B Official Bank Management Authorization (Admin Endorsements)
   const [branchControllerSignName, setBranchControllerSignName] = useState('Alh. Ibrahim Garba');
   const [branchControllerSignatureDataUrl, setBranchControllerSignatureDataUrl] = useState('');
   const [branchControllerSignDate, setBranchControllerSignDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [branchControllerSignMethod, setBranchControllerSignMethod] = useState<'DRAW' | 'UPLOAD'>('DRAW');
+  const [controllerMode, setControllerMode] = useState<'SAVED' | 'CUSTOM'>('SAVED');
+  const [saveControllerAsDefault, setSaveControllerAsDefault] = useState(true);
 
   const [branchSupportSignName, setBranchSupportSignName] = useState('Mrs. Ngozi Adeleke');
   const [branchSupportSignatureDataUrl, setBranchSupportSignatureDataUrl] = useState('');
   const [branchSupportSignDate, setBranchSupportSignDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [branchSupportSignMethod, setBranchSupportSignMethod] = useState<'DRAW' | 'UPLOAD'>('DRAW');
+  const [supportMode, setSupportMode] = useState<'SAVED' | 'CUSTOM'>('SAVED');
+  const [saveSupportAsDefault, setSaveSupportAsDefault] = useState(true);
 
   const [activeSignModal, setActiveSignModal] = useState<'BRANCH_CONTROLLER' | 'BRANCH_SUPPORT' | null>(null);
 
   const selectedRef = referrals.find(r => r.id === selectedId);
+
+  const handleOpenApprove = () => {
+    setActionType('APPROVE');
+    setAdminNotes('');
+    setPresetNotice(null);
+
+    if (savedAdminSignatures?.branchController?.signatureImage) {
+      setBranchControllerSignName(savedAdminSignatures.branchController.name);
+      setBranchControllerSignatureDataUrl(savedAdminSignatures.branchController.signatureImage);
+      setControllerMode('SAVED');
+    } else {
+      setBranchControllerSignName(savedAdminSignatures?.branchController?.name || 'Alh. Ibrahim Garba');
+      setBranchControllerSignatureDataUrl('');
+      setControllerMode('CUSTOM');
+    }
+
+    if (savedAdminSignatures?.branchSupport?.signatureImage) {
+      setBranchSupportSignName(savedAdminSignatures.branchSupport.name);
+      setBranchSupportSignatureDataUrl(savedAdminSignatures.branchSupport.signatureImage);
+      setSupportMode('SAVED');
+    } else {
+      setBranchSupportSignName(savedAdminSignatures?.branchSupport?.name || 'Mrs. Ngozi Adeleke');
+      setBranchSupportSignatureDataUrl('');
+      setSupportMode('CUSTOM');
+    }
+  };
+
+  const handleDeleteControllerPreset = async () => {
+    if (window.confirm("Delete the saved signature preset for Branch Controller? Any new referrals will require a new signature.")) {
+      const res = await deleteAdminSignatureProfile('BRANCH_CONTROLLER');
+      if (res.success) {
+        setBranchControllerSignatureDataUrl('');
+        setControllerMode('CUSTOM');
+        setPresetNotice({ type: 'success', message: 'Branch Controller saved signature preset deleted.' });
+        setTimeout(() => setPresetNotice(null), 4000);
+      }
+    }
+  };
+
+  const handleDeleteSupportPreset = async () => {
+    if (window.confirm("Delete the saved signature preset for Branch Support Officer? Any new referrals will require a new signature.")) {
+      const res = await deleteAdminSignatureProfile('BRANCH_SUPPORT');
+      if (res.success) {
+        setBranchSupportSignatureDataUrl('');
+        setSupportMode('CUSTOM');
+        setPresetNotice({ type: 'success', message: 'Branch Support Officer saved signature preset deleted.' });
+        setTimeout(() => setPresetNotice(null), 4000);
+      }
+    }
+  };
+
+  const handleSaveControllerPresetNow = async () => {
+    if (!branchControllerSignatureDataUrl) {
+      alert("Please draw or upload a signature first.");
+      return;
+    }
+    const res = await saveAdminSignatureProfile('BRANCH_CONTROLLER', {
+      name: branchControllerSignName || 'Branch Controller',
+      signatureImage: branchControllerSignatureDataUrl
+    });
+    if (res.success) {
+      setControllerMode('SAVED');
+      setPresetNotice({ type: 'success', message: 'Branch Controller signature saved permanently as default preset!' });
+      setTimeout(() => setPresetNotice(null), 4000);
+    }
+  };
+
+  const handleSaveSupportPresetNow = async () => {
+    if (!branchSupportSignatureDataUrl) {
+      alert("Please draw or upload a signature first.");
+      return;
+    }
+    const res = await saveAdminSignatureProfile('BRANCH_SUPPORT', {
+      name: branchSupportSignName || 'Branch Support Officer',
+      signatureImage: branchSupportSignatureDataUrl
+    });
+    if (res.success) {
+      setSupportMode('SAVED');
+      setPresetNotice({ type: 'success', message: 'Branch Support signature saved permanently as default preset!' });
+      setTimeout(() => setPresetNotice(null), 4000);
+    }
+  };
 
   const handleActionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,6 +350,20 @@ export const ReferralReview: React.FC = () => {
     let success = false;
 
     if (actionType === 'APPROVE') {
+      // Auto-save official signatures as permanent presets if toggle is active or if new signature is provided
+      if (saveControllerAsDefault && branchControllerSignatureDataUrl && branchControllerSignName) {
+        saveAdminSignatureProfile('BRANCH_CONTROLLER', {
+          name: branchControllerSignName,
+          signatureImage: branchControllerSignatureDataUrl
+        }).catch(console.error);
+      }
+      if (saveSupportAsDefault && branchSupportSignatureDataUrl && branchSupportSignName) {
+        saveAdminSignatureProfile('BRANCH_SUPPORT', {
+          name: branchSupportSignName,
+          signatureImage: branchSupportSignatureDataUrl
+        }).catch(console.error);
+      }
+
       const res = await updateReferralStatus(selectedRef.id, 'APPROVED_FORWARDED', {
         adminNotes: adminNotes || 'Approved by system administrator.',
         branchControllerSignName: branchControllerSignName || undefined,
@@ -280,8 +392,7 @@ export const ReferralReview: React.FC = () => {
       setActionType(null);
       setAdminNotes('');
       setMoreInfoNotes('');
-      setBranchControllerSignatureDataUrl('');
-      setBranchSupportSignatureDataUrl('');
+      setPresetNotice(null);
       setViewMode('LIST');
     }
   };
@@ -979,11 +1090,11 @@ export const ReferralReview: React.FC = () => {
                   {!actionType ? (
                     <div className="flex flex-col sm:flex-row gap-3 w-full">
                       <button
-                        onClick={() => setActionType('APPROVE')}
+                        onClick={handleOpenApprove}
                         className="flex-1 flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white py-3 px-4 rounded-lg font-bold text-sm transition-all shadow-sm cursor-pointer"
                       >
                         <CheckCircle size={18} />
-                        <span>Approve & Forward</span>
+                        <span>Approve &amp; Forward</span>
                       </button>
                       <button
                         onClick={() => setActionType('MORE_INFO')}
@@ -1019,6 +1130,13 @@ export const ReferralReview: React.FC = () => {
                         </button>
                       </div>
 
+                      {presetNotice && (
+                        <div className={`p-3 rounded-lg border text-xs flex items-center gap-2 ${presetNotice.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border-rose-500/30 text-rose-400'}`}>
+                          <Sparkles size={15} />
+                          <span className="font-semibold">{presetNotice.message}</span>
+                        </div>
+                      )}
+
                       {actionType === 'APPROVE' && (
                         <div className="flex flex-col gap-4">
                           <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
@@ -1027,31 +1145,78 @@ export const ReferralReview: React.FC = () => {
                               <span>Section B: Bank Management Authorizations (Official Endorsements)</span>
                             </h5>
                             <p className="text-[0.7rem] text-text-muted m-0">
-                              As Admin, affix the official Branch Controller and Branch Support endorsements below. These signatures will authorize treatment at {selectedRef.hospitalName}.
+                              As Admin, affix official Branch Controller and Branch Support endorsements. Saved signatures are automatically loaded from your presets.
                             </p>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Card 1: Branch Controller Endorsement */}
                             <div className="bg-bg-secondary border border-border-color rounded-xl p-4 flex flex-col gap-3">
-                              <div className="flex justify-between items-center border-b border-border-color pb-2">
-                                <span className="text-xs font-bold uppercase text-primary tracking-wide">1. Branch Controller</span>
-                                <div className="flex bg-bg-primary border border-border-color rounded p-0.5 text-[0.65rem] font-bold">
-                                  <button
-                                    type="button"
-                                    onClick={() => setBranchControllerSignMethod('DRAW')}
-                                    className={`px-2 py-0.5 rounded cursor-pointer transition-all ${branchControllerSignMethod === 'DRAW' ? 'bg-primary text-white' : 'text-text-muted'}`}
-                                  >
-                                    Draw
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setBranchControllerSignMethod('UPLOAD')}
-                                    className={`px-2 py-0.5 rounded cursor-pointer transition-all ${branchControllerSignMethod === 'UPLOAD' ? 'bg-primary text-white' : 'text-text-muted'}`}
-                                  >
-                                    Upload
-                                  </button>
+                              <div className="flex justify-between items-center border-b border-border-color pb-2 flex-wrap gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold uppercase text-primary tracking-wide">1. Branch Controller</span>
+                                  {savedAdminSignatures?.branchController?.signatureImage && controllerMode === 'SAVED' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.62rem] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                      <ShieldCheck size={11} />
+                                      Saved Preset
+                                    </span>
+                                  )}
                                 </div>
+
+                                {savedAdminSignatures?.branchController?.signatureImage && controllerMode === 'SAVED' ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setControllerMode('CUSTOM')}
+                                      className="px-2 py-0.5 text-[0.65rem] font-bold rounded bg-bg-primary hover:bg-bg-primary/80 border border-border-color text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+                                      title="Draw or upload a new signature"
+                                    >
+                                      ✏️ Change
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleDeleteControllerPreset}
+                                      className="px-2 py-0.5 text-[0.65rem] font-bold rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 transition-all cursor-pointer flex items-center gap-1"
+                                      title="Delete saved preset"
+                                    >
+                                      <Trash2 size={11} />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5">
+                                    {savedAdminSignatures?.branchController?.signatureImage && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setBranchControllerSignName(savedAdminSignatures.branchController!.name);
+                                          setBranchControllerSignatureDataUrl(savedAdminSignatures.branchController!.signatureImage);
+                                          setControllerMode('SAVED');
+                                        }}
+                                        className="px-2 py-0.5 text-[0.65rem] font-bold rounded bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-all cursor-pointer flex items-center gap-1"
+                                      >
+                                        <RotateCcw size={10} />
+                                        <span>Use Preset</span>
+                                      </button>
+                                    )}
+                                    <div className="flex bg-bg-primary border border-border-color rounded p-0.5 text-[0.65rem] font-bold">
+                                      <button
+                                        type="button"
+                                        onClick={() => setBranchControllerSignMethod('DRAW')}
+                                        className={`px-2 py-0.5 rounded cursor-pointer transition-all ${branchControllerSignMethod === 'DRAW' ? 'bg-primary text-white' : 'text-text-muted'}`}
+                                      >
+                                        Draw
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setBranchControllerSignMethod('UPLOAD')}
+                                        className={`px-2 py-0.5 rounded cursor-pointer transition-all ${branchControllerSignMethod === 'UPLOAD' ? 'bg-primary text-white' : 'text-text-muted'}`}
+                                      >
+                                        Upload
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
 
                               <div className="flex flex-col gap-1">
@@ -1067,15 +1232,24 @@ export const ReferralReview: React.FC = () => {
                               </div>
 
                               <div className="flex flex-col gap-1">
-                                <label className="text-[0.7rem] font-bold text-text-secondary uppercase">Signature</label>
+                                <div className="flex justify-between items-center">
+                                  <label className="text-[0.7rem] font-bold text-text-secondary uppercase">Official Signature</label>
+                                  {controllerMode === 'SAVED' && (
+                                    <span className="text-[0.65rem] text-emerald-400 font-semibold">✓ Auto-applied from preset</span>
+                                  )}
+                                </div>
+
                                 {branchControllerSignatureDataUrl ? (
-                                  <div className="relative bg-bg-primary border border-border-color rounded p-2 text-center h-16 flex items-center justify-center">
-                                    <img src={branchControllerSignatureDataUrl} alt="Branch Controller Signature" className="max-h-12 max-w-full object-contain" />
+                                  <div className="relative bg-bg-primary border border-border-color rounded-lg p-2 text-center h-18 flex items-center justify-center">
+                                    <img src={branchControllerSignatureDataUrl} alt="Branch Controller Signature" className="max-h-14 max-w-full object-contain" />
                                     <button
                                       type="button"
-                                      onClick={() => setBranchControllerSignatureDataUrl('')}
-                                      className="absolute top-1 right-1 bg-rose-500/20 text-rose-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-rose-500 hover:text-white cursor-pointer"
-                                      title="Remove"
+                                      onClick={() => {
+                                        setBranchControllerSignatureDataUrl('');
+                                        setControllerMode('CUSTOM');
+                                      }}
+                                      className="absolute top-1.5 right-1.5 bg-rose-500/20 text-rose-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-rose-500 hover:text-white cursor-pointer"
+                                      title="Clear signature"
                                     >
                                       ✕
                                     </button>
@@ -1084,13 +1258,13 @@ export const ReferralReview: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => setActiveSignModal('BRANCH_CONTROLLER')}
-                                    className="p-3 border-2 border-dashed border-border-color hover:border-primary rounded bg-bg-primary text-xs font-bold text-primary flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                                    className="p-3 border-2 border-dashed border-border-color hover:border-primary rounded-lg bg-bg-primary text-xs font-bold text-primary flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                                   >
                                     <span>✍️</span>
                                     <span>Click to Draw Signature</span>
                                   </button>
                                 ) : (
-                                  <label className="p-3 border-2 border-dashed border-border-color hover:border-primary rounded bg-bg-primary text-xs font-bold text-primary flex flex-col items-center justify-center gap-1 cursor-pointer transition-all">
+                                  <label className="p-3 border-2 border-dashed border-border-color hover:border-primary rounded-lg bg-bg-primary text-xs font-bold text-primary flex flex-col items-center justify-center gap-1 cursor-pointer transition-all">
                                     <Upload size={16} />
                                     <span>Upload Signature Image</span>
                                     <span className="text-[0.65rem] text-text-muted font-normal">PNG or JPG</span>
@@ -1108,38 +1282,112 @@ export const ReferralReview: React.FC = () => {
                                 )}
                               </div>
 
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[0.7rem] font-bold text-text-secondary uppercase">Date Endorsed</label>
-                                <input
-                                  type="date"
-                                  className="px-2.5 py-1.5 text-xs rounded border border-border-color bg-bg-primary text-text-primary outline-none focus:border-primary font-semibold"
-                                  value={branchControllerSignDate}
-                                  onChange={e => setBranchControllerSignDate(e.target.value)}
-                                  required
-                                />
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[0.7rem] font-bold text-text-secondary uppercase">Date Endorsed</label>
+                                  <input
+                                    type="date"
+                                    className="px-2.5 py-1.5 text-xs rounded border border-border-color bg-bg-primary text-text-primary outline-none focus:border-primary font-semibold"
+                                    value={branchControllerSignDate}
+                                    onChange={e => setBranchControllerSignDate(e.target.value)}
+                                    required
+                                  />
+                                </div>
+
+                                {controllerMode === 'CUSTOM' && branchControllerSignatureDataUrl && (
+                                  <div className="flex flex-col justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={handleSaveControllerPresetNow}
+                                      className="px-2.5 py-1.5 text-xs font-bold rounded bg-primary hover:bg-primary-hover text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                                    >
+                                      <Save size={12} />
+                                      <span>Save as Preset</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
+
+                              {controllerMode === 'CUSTOM' && (
+                                <label className="flex items-center gap-2 text-[0.7rem] text-text-muted cursor-pointer mt-1 select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={saveControllerAsDefault}
+                                    onChange={e => setSaveControllerAsDefault(e.target.checked)}
+                                    className="rounded border-border-color text-primary focus:ring-0"
+                                  />
+                                  <span>Save as permanent signature preset for future approvals</span>
+                                </label>
+                              )}
                             </div>
 
                             {/* Card 2: Branch Support Endorsement */}
                             <div className="bg-bg-secondary border border-border-color rounded-xl p-4 flex flex-col gap-3">
-                              <div className="flex justify-between items-center border-b border-border-color pb-2">
-                                <span className="text-xs font-bold uppercase text-primary tracking-wide">2. Branch Support Officer</span>
-                                <div className="flex bg-bg-primary border border-border-color rounded p-0.5 text-[0.65rem] font-bold">
-                                  <button
-                                    type="button"
-                                    onClick={() => setBranchSupportSignMethod('DRAW')}
-                                    className={`px-2 py-0.5 rounded cursor-pointer transition-all ${branchSupportSignMethod === 'DRAW' ? 'bg-primary text-white' : 'text-text-muted'}`}
-                                  >
-                                    Draw
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setBranchSupportSignMethod('UPLOAD')}
-                                    className={`px-2 py-0.5 rounded cursor-pointer transition-all ${branchSupportSignMethod === 'UPLOAD' ? 'bg-primary text-white' : 'text-text-muted'}`}
-                                  >
-                                    Upload
-                                  </button>
+                              <div className="flex justify-between items-center border-b border-border-color pb-2 flex-wrap gap-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold uppercase text-primary tracking-wide">2. Branch Support Officer</span>
+                                  {savedAdminSignatures?.branchSupport?.signatureImage && supportMode === 'SAVED' && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.62rem] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                      <ShieldCheck size={11} />
+                                      Saved Preset
+                                    </span>
+                                  )}
                                 </div>
+
+                                {savedAdminSignatures?.branchSupport?.signatureImage && supportMode === 'SAVED' ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => setSupportMode('CUSTOM')}
+                                      className="px-2 py-0.5 text-[0.65rem] font-bold rounded bg-bg-primary hover:bg-bg-primary/80 border border-border-color text-text-secondary hover:text-text-primary transition-all cursor-pointer"
+                                      title="Draw or upload a new signature"
+                                    >
+                                      ✏️ Change
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleDeleteSupportPreset}
+                                      className="px-2 py-0.5 text-[0.65rem] font-bold rounded bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 transition-all cursor-pointer flex items-center gap-1"
+                                      title="Delete saved preset"
+                                    >
+                                      <Trash2 size={11} />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5">
+                                    {savedAdminSignatures?.branchSupport?.signatureImage && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setBranchSupportSignName(savedAdminSignatures.branchSupport!.name);
+                                          setBranchSupportSignatureDataUrl(savedAdminSignatures.branchSupport!.signatureImage);
+                                          setSupportMode('SAVED');
+                                        }}
+                                        className="px-2 py-0.5 text-[0.65rem] font-bold rounded bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-all cursor-pointer flex items-center gap-1"
+                                      >
+                                        <RotateCcw size={10} />
+                                        <span>Use Preset</span>
+                                      </button>
+                                    )}
+                                    <div className="flex bg-bg-primary border border-border-color rounded p-0.5 text-[0.65rem] font-bold">
+                                      <button
+                                        type="button"
+                                        onClick={() => setBranchSupportSignMethod('DRAW')}
+                                        className={`px-2 py-0.5 rounded cursor-pointer transition-all ${branchSupportSignMethod === 'DRAW' ? 'bg-primary text-white' : 'text-text-muted'}`}
+                                      >
+                                        Draw
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => setBranchSupportSignMethod('UPLOAD')}
+                                        className={`px-2 py-0.5 rounded cursor-pointer transition-all ${branchSupportSignMethod === 'UPLOAD' ? 'bg-primary text-white' : 'text-text-muted'}`}
+                                      >
+                                        Upload
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
 
                               <div className="flex flex-col gap-1">
@@ -1155,15 +1403,24 @@ export const ReferralReview: React.FC = () => {
                               </div>
 
                               <div className="flex flex-col gap-1">
-                                <label className="text-[0.7rem] font-bold text-text-secondary uppercase">Signature</label>
+                                <div className="flex justify-between items-center">
+                                  <label className="text-[0.7rem] font-bold text-text-secondary uppercase">Official Signature</label>
+                                  {supportMode === 'SAVED' && (
+                                    <span className="text-[0.65rem] text-emerald-400 font-semibold">✓ Auto-applied from preset</span>
+                                  )}
+                                </div>
+
                                 {branchSupportSignatureDataUrl ? (
-                                  <div className="relative bg-bg-primary border border-border-color rounded p-2 text-center h-16 flex items-center justify-center">
-                                    <img src={branchSupportSignatureDataUrl} alt="Branch Support Signature" className="max-h-12 max-w-full object-contain" />
+                                  <div className="relative bg-bg-primary border border-border-color rounded-lg p-2 text-center h-18 flex items-center justify-center">
+                                    <img src={branchSupportSignatureDataUrl} alt="Branch Support Signature" className="max-h-14 max-w-full object-contain" />
                                     <button
                                       type="button"
-                                      onClick={() => setBranchSupportSignatureDataUrl('')}
-                                      className="absolute top-1 right-1 bg-rose-500/20 text-rose-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-rose-500 hover:text-white cursor-pointer"
-                                      title="Remove"
+                                      onClick={() => {
+                                        setBranchSupportSignatureDataUrl('');
+                                        setSupportMode('CUSTOM');
+                                      }}
+                                      className="absolute top-1.5 right-1.5 bg-rose-500/20 text-rose-500 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold hover:bg-rose-500 hover:text-white cursor-pointer"
+                                      title="Clear signature"
                                     >
                                       ✕
                                     </button>
@@ -1172,13 +1429,13 @@ export const ReferralReview: React.FC = () => {
                                   <button
                                     type="button"
                                     onClick={() => setActiveSignModal('BRANCH_SUPPORT')}
-                                    className="p-3 border-2 border-dashed border-border-color hover:border-primary rounded bg-bg-primary text-xs font-bold text-primary flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                                    className="p-3 border-2 border-dashed border-border-color hover:border-primary rounded-lg bg-bg-primary text-xs font-bold text-primary flex items-center justify-center gap-1.5 cursor-pointer transition-all"
                                   >
                                     <span>✍️</span>
                                     <span>Click to Draw Signature</span>
                                   </button>
                                 ) : (
-                                  <label className="p-3 border-2 border-dashed border-border-color hover:border-primary rounded bg-bg-primary text-xs font-bold text-primary flex flex-col items-center justify-center gap-1 cursor-pointer transition-all">
+                                  <label className="p-3 border-2 border-dashed border-border-color hover:border-primary rounded-lg bg-bg-primary text-xs font-bold text-primary flex flex-col items-center justify-center gap-1 cursor-pointer transition-all">
                                     <Upload size={16} />
                                     <span>Upload Signature Image</span>
                                     <span className="text-[0.65rem] text-text-muted font-normal">PNG or JPG</span>
@@ -1196,16 +1453,43 @@ export const ReferralReview: React.FC = () => {
                                 )}
                               </div>
 
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[0.7rem] font-bold text-text-secondary uppercase">Date Endorsed</label>
-                                <input
-                                  type="date"
-                                  className="px-2.5 py-1.5 text-xs rounded border border-border-color bg-bg-primary text-text-primary outline-none focus:border-primary font-semibold"
-                                  value={branchSupportSignDate}
-                                  onChange={e => setBranchSupportSignDate(e.target.value)}
-                                  required
-                                />
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[0.7rem] font-bold text-text-secondary uppercase">Date Endorsed</label>
+                                  <input
+                                    type="date"
+                                    className="px-2.5 py-1.5 text-xs rounded border border-border-color bg-bg-primary text-text-primary outline-none focus:border-primary font-semibold"
+                                    value={branchSupportSignDate}
+                                    onChange={e => setBranchSupportSignDate(e.target.value)}
+                                    required
+                                  />
+                                </div>
+
+                                {supportMode === 'CUSTOM' && branchSupportSignatureDataUrl && (
+                                  <div className="flex flex-col justify-end">
+                                    <button
+                                      type="button"
+                                      onClick={handleSaveSupportPresetNow}
+                                      className="px-2.5 py-1.5 text-xs font-bold rounded bg-primary hover:bg-primary-hover text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                                    >
+                                      <Save size={12} />
+                                      <span>Save as Preset</span>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
+
+                              {supportMode === 'CUSTOM' && (
+                                <label className="flex items-center gap-2 text-[0.7rem] text-text-muted cursor-pointer mt-1 select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={saveSupportAsDefault}
+                                    onChange={e => setSaveSupportAsDefault(e.target.checked)}
+                                    className="rounded border-border-color text-primary focus:ring-0"
+                                  />
+                                  <span>Save as permanent signature preset for future approvals</span>
+                                </label>
+                              )}
                             </div>
                           </div>
 

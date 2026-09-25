@@ -233,3 +233,14 @@ export interface SystemActivityLog {
   ipAddress?: string;
 }
 
+export interface AdminSignatureProfile {
+  name: string;
+  signatureImage: string;
+  updatedAt: string;
+}
+
+export interface SavedAdminSignatures {
+  branchController?: AdminSignatureProfile;
+  branchSupport?: AdminSignatureProfile;
+}
+

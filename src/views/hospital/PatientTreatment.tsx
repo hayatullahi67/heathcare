@@ -233,16 +233,9 @@ export const PatientTreatment: React.FC = () => {
   const [billNeonatal, setBillNeonatal] = useState('');
   const [billMiscellaneous, setBillMiscellaneous] = useState('');
 
-  // Section D Patient Confirmation States
-  const [patientConfirmName, setPatientConfirmName] = useState('');
-  const [patientSignature, setPatientSignature] = useState(false);
-  const [patientSignDate, setPatientSignDate] = useState('');
-
   // Doctor Digital Signature Mode & State
   const [doctorSignMethod, setDoctorSignMethod] = useState<'DRAW' | 'UPLOAD'>('DRAW');
-  const [patientSignMethod, setPatientSignMethod] = useState<'DRAW' | 'UPLOAD'>('DRAW');
   const [doctorSignatureDataUrl, setDoctorSignatureDataUrl] = useState<string>('');
-  const [patientSignatureDataUrl, setPatientSignatureDataUrl] = useState<string>('');
 
   // Branch Controller & Branch Support Signatures States
   const [branchControllerSignName, setBranchControllerSignName] = useState('');
@@ -253,7 +246,7 @@ export const PatientTreatment: React.FC = () => {
   const [branchSupportSignatureDataUrl, setBranchSupportSignatureDataUrl] = useState('');
   const [branchSupportSignDate, setBranchSupportSignDate] = useState('');
 
-  const [activeSignModal, setActiveSignModal] = useState<'DOCTOR' | 'PATIENT' | 'BRANCH_CONTROLLER' | 'BRANCH_SUPPORT' | null>(null);
+  const [activeSignModal, setActiveSignModal] = useState<'DOCTOR' | null>(null);
 
   // Helper for image upload with automatic downscaling & compression to prevent oversized Firestore entities
   const handleImageUpload = (file: File, callback: (dataUrl: string) => void) => {
@@ -360,7 +353,7 @@ export const PatientTreatment: React.FC = () => {
     });
   };
 
-  if (patientSignatureDataUrl || typeof handleFileSimulate === 'function') {
+  if (typeof handleFileSimulate === 'function') {
     // No-op
   }
 
@@ -414,11 +407,6 @@ export const PatientTreatment: React.FC = () => {
       setBillPhysiotherapy(report.billingPhysiotherapy?.toString() || '');
       setBillNeonatal(report.billingNeonatal?.toString() || '');
       setBillMiscellaneous(report.billingMiscellaneous?.toString() || '');
-
-      setPatientConfirmName(report.confirmedByPatientName || ref.patientName || ref.staffName || '');
-      setPatientSignature(!!report.patientSignature || !!report.patientSignatureImage);
-      setPatientSignDate(report.patientSignDate || new Date().toISOString().split('T')[0]);
-      setPatientSignatureDataUrl(report.patientSignatureImage || '');
     } else {
       // Smart defaults for new clinical reports
       setHospClinicName(ref.hospitalName || currentUser?.name || '');
@@ -464,11 +452,6 @@ export const PatientTreatment: React.FC = () => {
       setBillPhysiotherapy('');
       setBillNeonatal('');
       setBillMiscellaneous('');
-
-      setPatientConfirmName(ref.patientName || ref.staffName || '');
-      setPatientSignature(false);
-      setPatientSignDate(new Date().toISOString().split('T')[0]);
-      setPatientSignatureDataUrl('');
     }
   };
 
@@ -595,7 +578,6 @@ export const PatientTreatment: React.FC = () => {
     const docSig = await compressSignatureIfNeeded(doctorSignatureDataUrl);
     const branchCtrlSig = await compressSignatureIfNeeded(branchControllerSignatureDataUrl);
     const branchSuppSig = await compressSignatureIfNeeded(branchSupportSignatureDataUrl);
-    const patientSig = await compressSignatureIfNeeded(patientSignatureDataUrl);
 
     // Format a summary text of the treatment provided for general dashboard logs
     const summaryItems = [];
@@ -2573,16 +2555,6 @@ export const PatientTreatment: React.FC = () => {
         />
       )}
 
-      {activeSignModal === 'PATIENT' && (
-        <SignaturePadModal
-          title="Patient / Retiree Digital Confirmation Signature"
-          onSave={dataUrl => {
-            setPatientSignatureDataUrl(dataUrl);
-            setPatientSignature(true);
-          }}
-          onClose={() => setActiveSignModal(null)}
-        />
-      )}
 
       <style>{`
         /* ==========================================================================

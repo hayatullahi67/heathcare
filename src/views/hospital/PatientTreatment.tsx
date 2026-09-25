@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
 import { useReferral } from '../../context/ReferralContext';
@@ -357,7 +357,10 @@ export const PatientTreatment: React.FC = () => {
     // No-op
   }
 
+  const initializedRefId = useRef<string | null>(null);
+
   const handleOpenForm = (ref: ReferralRequest) => {
+    initializedRefId.current = ref.id;
     setTreatmentRef(ref);
     setError(null);
     setDischargeFile(null);
@@ -458,12 +461,14 @@ export const PatientTreatment: React.FC = () => {
   useEffect(() => {
     const targetId = (location.state as any)?.referralId;
     if (targetId && referrals.length > 0) {
-      const found = referrals.find(r => r.id === targetId);
-      if (found) {
-        handleOpenForm(found);
+      if (initializedRefId.current !== targetId && (!treatmentRef || treatmentRef.id !== targetId)) {
+        const found = referrals.find(r => r.id === targetId);
+        if (found) {
+          handleOpenForm(found);
+        }
       }
     }
-  }, [location.state, referrals]);
+  }, [location.state, referrals, treatmentRef]);
 
   const handleOpenManageCare = (ref: ReferralRequest) => {
     setSelectedActiveRef(ref);

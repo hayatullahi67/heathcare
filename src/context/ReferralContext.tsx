@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import type { ReferralRequest, AppNotification, ReferralStatus, TreatmentReport, MockFile, SystemActivityLog } from '../types';
 import { useAuth } from './AuthContext';
 import { collection, onSnapshot, doc, setDoc, writeBatch } from 'firebase/firestore';
@@ -903,7 +903,7 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const getReferralsForUser = (): ReferralRequest[] => {
+  const userReferrals = useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.role === 'SUPER_ADMIN') return referrals;
     if (currentUser.role === 'RETIRED_STAFF' || currentUser.role === 'STAFF') {
@@ -919,15 +919,23 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       );
     }
     return [];
-  };
+  }, [referrals, currentUser]);
 
-  const getNotificationsForUser = (): AppNotification[] => {
+  const getReferralsForUser = useCallback((): ReferralRequest[] => {
+    return userReferrals;
+  }, [userReferrals]);
+
+  const userNotifications = useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.role === 'SUPER_ADMIN') {
       return notifications.filter(n => n.userId === 'usr-admin');
     }
     return notifications.filter(n => n.userId === currentUser.id);
-  };
+  }, [notifications, currentUser]);
+
+  const getNotificationsForUser = useCallback((): AppNotification[] => {
+    return userNotifications;
+  }, [userNotifications]);
 
   return (
     <ReferralContext.Provider

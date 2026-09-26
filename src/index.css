@@ -128,8 +128,15 @@ body {
 .dashboard-container {
   display: flex;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
   overflow: hidden;
+}
+
+@supports (min-height: 100dvh) {
+  #root,
+  .dashboard-container {
+    min-height: 100dvh;
+  }
 }
 
 /* Card Visual Aesthetics */
@@ -439,6 +446,25 @@ body {
 .form-control:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Keep native editable controls visible and tappable in Safari/WebKit. */
+.form-control,
+input,
+textarea,
+select {
+  -webkit-text-fill-color: currentColor;
+  caret-color: currentColor;
+}
+
+.user-form-grid {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .user-form-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }
 
 /* Universal Form Input Text Selection & WebKit Accessibility */
@@ -807,4 +833,3 @@ input, textarea, select {
 .notification-dropdown-backdrop {
   z-index: 2000 !important;
 }
-

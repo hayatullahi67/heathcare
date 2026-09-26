@@ -38,34 +38,60 @@ const SignaturePadModal: React.FC<{
   const [isDrawing, setIsDrawing] = React.useState(false);
   const [hasDrawn, setHasDrawn] = React.useState(false);
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  // Keep the bitmap in sync with the displayed canvas.  A fixed bitmap works
+  // on a desktop mouse but produces offset/blurry strokes on high-DPI iPhones
+  // and iPads when CSS scales the canvas to fit the modal.
+  React.useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const resizeCanvas = () => {
+      const rect = canvas.getBoundingClientRect();
+      const scale = window.devicePixelRatio || 1;
+      canvas.width = Math.round(rect.width * scale);
+      canvas.height = Math.round(rect.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx?.setTransform(scale, 0, 0, scale, 0, 0);
+    };
+
+    resizeCanvas();
+    const observer = new ResizeObserver(resizeCanvas);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, []);
+
+  const getPoint = (canvas: HTMLCanvasElement, e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+
+  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    const point = getPoint(canvas, e);
 
     ctx.beginPath();
-    ctx.moveTo(clientX - rect.left, clientY - rect.top);
+    ctx.moveTo(point.x, point.y);
     setIsDrawing(true);
     setHasDrawn(true);
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    e.preventDefault();
+    const point = getPoint(canvas, e);
 
-    ctx.lineTo(clientX - rect.left, clientY - rect.top);
+    ctx.lineTo(point.x, point.y);
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
@@ -73,7 +99,10 @@ const SignaturePadModal: React.FC<{
     ctx.stroke();
   };
 
-  const stopDrawing = () => {
+  const stopDrawing = (e?: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e?.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
     setIsDrawing(false);
   };
 
@@ -117,15 +146,10 @@ const SignaturePadModal: React.FC<{
         <div style={{ border: '2px dashed var(--border-color)', borderRadius: '12px', overflow: 'hidden', backgroundColor: '#0b0f19', marginBottom: '1.25rem', touchAction: 'none' }}>
           <canvas
             ref={canvasRef}
-            width={450}
-            height={180}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
+            onPointerDown={startDrawing}
+            onPointerMove={draw}
+            onPointerUp={stopDrawing}
+            onPointerCancel={stopDrawing}
             style={{ width: '100%', height: '180px', display: 'block', cursor: 'crosshair' }}
           />
         </div>
@@ -411,14 +435,15 @@ export const PatientTreatment: React.FC = () => {
       setBillNeonatal(report.billingNeonatal?.toString() || '');
       setBillMiscellaneous(report.billingMiscellaneous?.toString() || '');
     } else {
-      // Smart defaults for new clinical reports
-      setHospClinicName(ref.hospitalName || currentUser?.name || '');
+      // New reports intentionally open as blank fields. The referral details
+      // are shown as hints so staff must actively confirm or replace them.
       setCareType('IN_PATIENT');
-      setInvoiceNo(`INV-${Date.now().toString().slice(-6)}`);
+      setHospClinicName('');
+      setInvoiceNo('');
       const now = new Date();
       setTimeReported(now.toTimeString().slice(0, 5));
-      setDateOfAdmission(now.toISOString().split('T')[0]);
-      setAttendingDoctor(currentUser?.name || '');
+      setDateOfAdmission('');
+      setAttendingDoctor('');
       setTelOffice('');
       setTelResident('');
 
@@ -724,7 +749,7 @@ export const PatientTreatment: React.FC = () => {
         <div className="clinical-assessment-billing-container fade-in" style={{ width: '100%', maxWidth: '1000px', margin: '0 auto', paddingBottom: '3rem' }}>
           
           {/* Top Navigation & Actions Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="treatment-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', gap: '1rem', flexWrap: 'wrap' }}>
             <div>
               <div className="treatment-top-breadcrumb">
                 Requests &nbsp;&rsaquo;&nbsp; <span className="treatment-top-breadcrumb-active">New Clinical Report &amp; Invoice</span>
@@ -734,7 +759,7 @@ export const PatientTreatment: React.FC = () => {
               </h1>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="treatment-page-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <button
                 type="button"
                 onClick={() => setTreatmentRef(null)}
@@ -774,7 +799,7 @@ export const PatientTreatment: React.FC = () => {
               </div>
 
               {/* Input Grid 1 */}
-              <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: '1.25rem', marginBottom: '1.5rem' }}>
+              <div className="treatment-details-grid treatment-details-grid--two grid grid-cols-1 sm:grid-cols-2" style={{ gap: '1.25rem', marginBottom: '1.5rem' }}>
                 <div>
                   <label className="treatment-label">
                     HOSPITAL/CLINIC NAME
@@ -782,7 +807,7 @@ export const PatientTreatment: React.FC = () => {
                   <input
                     type="text"
                     className="treatment-input"
-                    placeholder="St. Lukes International"
+                    placeholder={treatmentRef.hospitalName || currentUser?.name || 'Hospital or clinic name'}
                     value={hospClinicName}
                     onChange={e => setHospClinicName(e.target.value)}
                     required
@@ -796,7 +821,7 @@ export const PatientTreatment: React.FC = () => {
                   <input
                     type="text"
                     className="treatment-input"
-                    placeholder="INV-2024-0892"
+                    placeholder="Enter patient ID or invoice number"
                     value={invoiceNo}
                     onChange={e => setInvoiceNo(e.target.value)}
                     required
@@ -805,7 +830,7 @@ export const PatientTreatment: React.FC = () => {
               </div>
 
               {/* Input Grid 2 */}
-              <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: '1.25rem', marginBottom: '1.5rem' }}>
+              <div className="treatment-details-grid treatment-details-grid--three grid grid-cols-1 sm:grid-cols-3" style={{ gap: '1.25rem', marginBottom: '1.5rem' }}>
                 <div>
                   <label className="treatment-label">
                     PATIENT TYPE
@@ -841,6 +866,7 @@ export const PatientTreatment: React.FC = () => {
                   <input
                     type="date"
                     className="treatment-input"
+                    placeholder="Select admission date"
                     value={dateOfAdmission}
                     onChange={e => setDateOfAdmission(e.target.value)}
                     required
@@ -849,7 +875,7 @@ export const PatientTreatment: React.FC = () => {
               </div>
 
               {/* Input Grid 3 */}
-              <div className="grid grid-cols-1 sm:grid-cols-3" style={{ gap: '1.25rem', marginBottom: '2rem' }}>
+              <div className="treatment-details-grid treatment-details-grid--three grid grid-cols-1 sm:grid-cols-3" style={{ gap: '1.25rem', marginBottom: '2rem' }}>
                 <div>
                   <label className="treatment-label">
                     ATTENDING DOCTOR
@@ -857,7 +883,7 @@ export const PatientTreatment: React.FC = () => {
                   <input
                     type="text"
                     className="treatment-input"
-                    placeholder="Dr. Jane Smith"
+                    placeholder={currentUser?.name || 'Attending doctor name'}
                     value={attendingDoctor}
                     onChange={e => setAttendingDoctor(e.target.value)}
                     required
@@ -2567,6 +2593,7 @@ export const PatientTreatment: React.FC = () => {
            ========================================================================== */
         .clinical-assessment-billing-container {
           color: var(--text-primary);
+          min-width: 0;
         }
 
         .treatment-top-breadcrumb {
@@ -2622,12 +2649,51 @@ export const PatientTreatment: React.FC = () => {
           box-shadow: 0 6px 18px rgba(14, 165, 233, 0.45);
         }
 
+        @media (max-width: 639px) {
+          .treatment-page-header {
+            align-items: stretch !important;
+          }
+          .treatment-page-actions {
+            width: 100%;
+          }
+          .treatment-page-actions button {
+            flex: 1;
+            min-height: 46px;
+            padding-inline: 0.75rem;
+          }
+          .treatment-card {
+            padding: 1rem;
+            border-radius: 12px;
+          }
+          .treatment-main-title {
+            font-size: 1.35rem;
+          }
+        }
+
         .treatment-card {
           background-color: var(--bg-secondary);
           border: 1px solid var(--border-color);
           border-radius: 16px;
           padding: 2rem;
           box-shadow: var(--shadow-md);
+          min-width: 0;
+        }
+
+        /* The content column is much narrower than the browser on iPad when
+           the sidebar is visible. Do not force three native controls into it. */
+        .treatment-details-grid {
+          grid-template-columns: minmax(0, 1fr) !important;
+        }
+        @media (min-width: 680px) {
+          .treatment-details-grid--two,
+          .treatment-details-grid--three {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
+        @media (min-width: 1180px) {
+          .treatment-details-grid--three {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          }
         }
 
         .treatment-card-header {
@@ -2661,19 +2727,35 @@ export const PatientTreatment: React.FC = () => {
         }
 
         .treatment-input {
+          display: block;
           width: 100%;
+          min-width: 0;
+          min-height: 46px;
           background-color: var(--bg-primary);
           border: 1px solid var(--border-color);
           border-radius: 10px;
           padding: 0.7rem 1rem;
-          font-size: 0.95rem;
+          font-size: 16px;
+          line-height: 1.25;
           color: var(--text-primary);
-          -webkit-text-fill-color: var(--text-primary);
           outline: none;
-          color-scheme: dark;
-          -webkit-user-select: text;
           user-select: text;
+          -webkit-user-select: text;
+          caret-color: var(--text-primary);
+          opacity: 1;
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        /* Let Safari retain its accessible, tappable native picker controls. */
+        .treatment-input[type='date'],
+        .treatment-input[type='time'],
+        select.treatment-input {
+          -webkit-appearance: auto;
+          appearance: auto;
+        }
+        .treatment-input::placeholder,
+        .treatment-textarea::placeholder {
+          color: var(--text-muted);
+          opacity: 1;
         }
         .treatment-input:focus {
           border-color: var(--primary);
@@ -2681,20 +2763,23 @@ export const PatientTreatment: React.FC = () => {
         }
 
         .treatment-textarea {
+          display: block;
           width: 100%;
+          min-width: 0;
           background-color: var(--bg-primary);
           border: 1px solid var(--border-color);
           border-radius: 10px;
           padding: 0.75rem 1rem;
-          font-size: 0.95rem;
+          font-size: 16px;
+          line-height: 1.45;
           color: var(--text-primary);
-          -webkit-text-fill-color: var(--text-primary);
           outline: none;
           resize: vertical;
           font-family: inherit;
-          color-scheme: dark;
-          -webkit-user-select: text;
           user-select: text;
+          -webkit-user-select: text;
+          caret-color: var(--text-primary);
+          opacity: 1;
           transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
         .treatment-textarea:focus {
@@ -2798,12 +2883,11 @@ export const PatientTreatment: React.FC = () => {
           padding: 0.4rem 0.5rem;
           font-size: 0.825rem;
           color: var(--text-primary);
-          -webkit-text-fill-color: var(--text-primary);
           outline: none;
           font-weight: 600;
-          color-scheme: dark;
-          -webkit-user-select: text;
           user-select: text;
+          -webkit-user-select: text;
+          caret-color: var(--text-primary);
           text-align: center;
         }
         .treatment-input-sm:focus {
@@ -2832,10 +2916,9 @@ export const PatientTreatment: React.FC = () => {
           outline: none;
           font-weight: 600;
           color: var(--text-primary);
-          -webkit-text-fill-color: var(--text-primary);
-          color-scheme: dark;
-          -webkit-user-select: text;
           user-select: text;
+          -webkit-user-select: text;
+          caret-color: var(--text-primary);
           -webkit-appearance: none;
           -moz-appearance: textfield;
           appearance: none;
@@ -2977,12 +3060,11 @@ export const PatientTreatment: React.FC = () => {
           font-size: 0.9rem;
           font-weight: 600;
           color: var(--text-primary);
-          -webkit-text-fill-color: var(--text-primary);
           margin-bottom: 0.75rem;
           outline: none;
-          color-scheme: dark;
-          -webkit-user-select: text;
           user-select: text;
+          -webkit-user-select: text;
+          caret-color: var(--text-primary);
         }
         .treatment-sig-input:focus {
           border-color: var(--primary);

@@ -555,6 +555,15 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
           overflow-y: auto;
         }
 
+        @supports (height: 100dvh) {
+          .sidebar-desktop {
+            height: 100dvh;
+          }
+          .main-content-wrapper {
+            min-height: 100dvh;
+          }
+        }
+
         .header {
           height: 72px;
           background-color: var(--bg-secondary);

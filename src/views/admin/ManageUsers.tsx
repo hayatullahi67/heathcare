@@ -797,7 +797,7 @@ export const ManageUsers: React.FC = () => {
             <div>
               {activeFormTab !== 'HOSPITAL' ? (
                 <form onSubmit={handleStaffSubmit} className="user-form flex flex-col gap-4">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="user-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     <div className="form-group">
                       <label className="form-label" htmlFor="staff-name">Full Name</label>
                       <input
@@ -899,7 +899,7 @@ export const ManageUsers: React.FC = () => {
                 </form>
               ) : (
                 <form onSubmit={handleHospitalSubmit} className="user-form flex flex-col gap-4">
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="user-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                     <div className="form-group">
                       <label className="form-label" htmlFor="hosp-name">Hospital Name</label>
                       <input

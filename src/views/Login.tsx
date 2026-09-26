@@ -170,13 +170,19 @@ export const Login: React.FC = () => {
       <style>{`
         .login-page {
           min-height: 100vh;
-          width: 100vw;
+          width: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
           background: radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
                       radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
           padding: 1.5rem;
+        }
+
+        @supports (min-height: 100dvh) {
+          .login-page {
+            min-height: 100dvh;
+          }
         }
 
         .login-card-wrapper {

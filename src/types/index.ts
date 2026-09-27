@@ -19,7 +19,8 @@ export type ReferralStatus =
   | 'ACCEPTED'
   | 'BILL_SUBMITTED'
   | 'BILL_REJECTED'
-  | 'TREATMENT_COMPLETED';
+  | 'TREATMENT_COMPLETED'
+  | 'CANCELLED';
 
 export interface MockFile {
   name: string;
@@ -102,6 +103,9 @@ export interface TreatmentReport {
   billRejectedAt?: string;
   billApprovedAt?: string;
   billResubmittedAt?: string;
+  approvedOnBehalfBy?: string;
+  approvedOnBehalfAt?: string;
+  approvalOnBehalfReason?: string;
 }
 
 
@@ -156,6 +160,10 @@ export interface ReferralRequest {
     createdAt: string;
   }[];
   declineReason?: string;
+  cancellationReason?: string;
+  cancelledAt?: string;
+  cancelledByName?: string;
+  cancelledByRole?: UserRole;
   vitals?: {
     bloodPressure?: string;
     pulseRate?: number;
@@ -243,4 +251,3 @@ export interface SavedAdminSignatures {
   branchController?: AdminSignatureProfile;
   branchSupport?: AdminSignatureProfile;
 }
-

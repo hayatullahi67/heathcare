@@ -26,8 +26,48 @@ import {
   RefreshCw,
   Clock,
   PenTool,
-  ShieldCheck
+  ShieldCheck,
+  ArrowLeft
 } from 'lucide-react';
+
+const AdminAuthorizationPanel: React.FC<{ referral: ReferralRequest }> = ({ referral }) => {
+  const report = referral.treatmentReport;
+  const controllerName = referral.branchControllerSignName || report?.branchControllerSignName;
+  const controllerImage = referral.branchControllerSignatureImage || report?.branchControllerSignatureImage;
+  const controllerDate = referral.branchControllerSignDate || report?.branchControllerSignDate;
+  const supportName = referral.branchSupportSignName || report?.branchSupportSignName;
+  const supportImage = referral.branchSupportSignatureImage || report?.branchSupportSignatureImage;
+  const supportDate = referral.branchSupportSignDate || report?.branchSupportSignDate;
+  const hasAuthorization = controllerName || controllerImage || supportName || supportImage;
+  if (!hasAuthorization) return null;
+
+  const signatures = [
+    { label: 'Branch Controller', name: controllerName, image: controllerImage, date: controllerDate },
+    { label: 'Branch Support Officer', name: supportName, image: supportImage, date: supportDate }
+  ];
+
+  return <section className="admin-authorization-panel" aria-label="Central Bank management authorizations">
+    <div className="admin-authorization-heading">
+      <div>
+        <span className="admin-authorization-eyebrow">Section B · Central Bank Management</span>
+        <h2>Approved authorizations on file</h2>
+      </div>
+      <span className="admin-authorization-status"><ShieldCheck size={14} /> Verified by admin</span>
+    </div>
+    <div className="admin-authorization-grid">
+      {signatures.map((signature, index) => <article className="admin-signature-card" key={signature.label}>
+        <span className="admin-signature-role">{index + 1}. {signature.label}</span>
+        <strong>{signature.name || signature.label}</strong>
+        <div className="admin-signature-preview">
+          {signature.image
+            ? <img src={signature.image} alt={`${signature.label} signature`} />
+            : <span>Official signature on file</span>}
+        </div>
+        <span className="admin-signature-date">{signature.date ? `Approved ${signature.date}` : 'Approval date recorded by Central Bank'}</span>
+      </article>)}
+    </div>
+  </section>;
+};
 
 const SignaturePadModal: React.FC<{
   title: string;
@@ -201,7 +241,7 @@ const SignaturePadModal: React.FC<{
 
 export const PatientTreatment: React.FC = () => {
   const location = useLocation();
-  const { getReferralsForUser, completeTreatment, resubmitMedicalBill, addProgressNote, updateVitals } = useReferral();
+  const { getReferralsForUser, completeTreatment, resubmitMedicalBill, addProgressNote, updateVitals, cancelReferral } = useReferral();
   const { currentUser } = useAuth();
   const referrals = getReferralsForUser();
 
@@ -349,6 +389,9 @@ export const PatientTreatment: React.FC = () => {
 
   // Manage Care Modal state (Clinical Logs / Vitals)
   const [selectedActiveRef, setSelectedActiveRef] = useState<ReferralRequest | null>(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   // Progress Note input states
   const [newNoteText, setNewNoteText] = useState('');
@@ -765,7 +808,7 @@ export const PatientTreatment: React.FC = () => {
                 onClick={() => setTreatmentRef(null)}
                 className="treatment-btn-draft"
               >
-                Save Draft
+                <ArrowLeft size={16} /> Back to Patient Care
               </button>
               <button
                 type="button"
@@ -786,6 +829,7 @@ export const PatientTreatment: React.FC = () => {
           )}
 
           <form onSubmit={handleSubmitReport} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <AdminAuthorizationPanel referral={treatmentRef} />
             
             {/* Card 1: Clinical Report Details */}
             <div className="treatment-card">
@@ -1053,7 +1097,7 @@ export const PatientTreatment: React.FC = () => {
 
                 {/* Official Bank Authorization (Section B - Authorized by Admin) */}
                 {(treatmentRef?.branchControllerSignName || treatmentRef?.branchControllerSignatureImage || treatmentRef?.branchSupportSignName || treatmentRef?.branchSupportSignatureImage) && (
-                  <div style={{ backgroundColor: 'rgba(14, 165, 233, 0.05)', border: '1px solid rgba(14, 165, 233, 0.2)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
+                  <div className="legacy-admin-authorization" style={{ backgroundColor: 'rgba(14, 165, 233, 0.05)', border: '1px solid rgba(14, 165, 233, 0.2)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <ShieldCheck size={18} style={{ color: 'var(--primary)' }} />
@@ -2104,11 +2148,11 @@ export const PatientTreatment: React.FC = () => {
             <div className="modal-footer flex gap-3">
               <button
                 type="button"
-                onClick={() => setSelectedActiveRef(null)}
+                onClick={() => { setCancelReason(''); setCancelError(null); setShowCancelDialog(true); }}
                 className="btn btn-secondary"
-                style={{ flex: 1 }}
+                style={{ flex: 1, color: '#dc2626', borderColor: '#fca5a5' }}
               >
-                Close Patient File
+                Cancel Referral (No Show)
               </button>
               <button
                 type="button"
@@ -2127,18 +2171,33 @@ export const PatientTreatment: React.FC = () => {
         document.body
       )}
 
-      {/* VIEW COMPLETED DISCHARGE CASE SUMMARY MODAL (Section C & D Paper Sheet Style) */}
+      {showCancelDialog && selectedActiveRef && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <form onSubmit={async e => { e.preventDefault(); const res = await cancelReferral(selectedActiveRef.id, cancelReason); if (res.success) { setShowCancelDialog(false); setSelectedActiveRef(null); } else setCancelError(res.message); }} className="modal-content" style={{ maxWidth: '520px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div><h3 style={{ margin: 0 }}>Cancel referral</h3><p className="text-muted text-sm">This records a no-show/cancellation only. It will not discharge the patient or create a bill.</p></div>
+            <textarea required autoFocus rows={4} value={cancelReason} onChange={e => setCancelReason(e.target.value)} placeholder="State the cancellation reason..." className="form-control" />
+            {cancelError && <p style={{ margin: 0, color: 'var(--danger)', fontSize: '0.85rem' }}>{cancelError}</p>}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}><button type="button" onClick={() => setShowCancelDialog(false)} className="btn btn-secondary">Back</button><button type="submit" className="btn btn-primary" style={{ backgroundColor: '#dc2626' }}>Confirm cancellation</button></div>
+          </form>
+        </div>, document.body
+      )}
+
+      {/* Full-page case file view (kept in a portal only to layer above the dashboard). */}
       {selectedDischargedRef && createPortal(
-        <div className="modal-overlay" onClick={() => setSelectedDischargedRef(null)}>
-          <div className="modal-content paper-document-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header border-b-0 pb-0">
-              <div className="paper-form-badge completed">Discharged & Certified Case File</div>
-              <button className="close-btn" onClick={() => setSelectedDischargedRef(null)}>
-                <X size={22} />
+        <div className="case-file-page">
+          <div className="case-file-content paper-document-modal">
+            <div className="case-file-toolbar">
+              <button type="button" className="case-file-back" onClick={() => setSelectedDischargedRef(null)}>
+                <ArrowLeft size={17} /> Back to Patient Care
               </button>
+              <div className="paper-form-badge completed">Discharged &amp; Certified Case File</div>
             </div>
 
-            <div className="modal-body paper-document-body responsive-paper-body" style={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' }}>
+            <div className="case-file-body paper-document-body responsive-paper-body">
+
+              {/* Central Bank approvals remain the first record shown for both
+                  awaiting-review and discharged case files. */}
+              <AdminAuthorizationPanel referral={selectedDischargedRef} />
 
               {/* Paper Form Title */}
               <div className="paper-form-title-section">
@@ -2273,7 +2332,7 @@ export const PatientTreatment: React.FC = () => {
 
                     {/* Branch Controller & Branch Support Endorsements */}
                     {(selectedDischargedRef.branchControllerSignatureImage || selectedDischargedRef.branchControllerSignName || selectedDischargedRef.treatmentReport.branchControllerSignatureImage || selectedDischargedRef.treatmentReport.branchControllerSignName || selectedDischargedRef.branchSupportSignatureImage || selectedDischargedRef.branchSupportSignName || selectedDischargedRef.treatmentReport.branchSupportSignatureImage || selectedDischargedRef.treatmentReport.branchSupportSignName) && (
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                      <div className="legacy-case-file-endorsements" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                         {/* Branch Controller */}
                         <div className="p-3 bg-paper-light border rounded" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '4px' }}>
                           <span className="paper-label block font-bold text-xs uppercase" style={{ color: '#0e4b56', marginBottom: '0.4rem', display: 'block', fontSize: '0.7rem', fontWeight: 750 }}>
@@ -2525,7 +2584,7 @@ export const PatientTreatment: React.FC = () => {
                                     style={{ maxHeight: '44px', maxWidth: '100%', objectFit: 'contain' }}
                                   />
                                 ) : (
-                                  <span className="patient-signature-font">{selectedDischargedRef.treatmentReport.confirmedByPatientName || selectedDischargedRef.patientName || selectedDischargedRef.staffName}</span>
+                                  <span className="awaiting-signature-label">Awaiting referral signature</span>
                                 )}
                               </div>
                             </div>
@@ -2535,7 +2594,7 @@ export const PatientTreatment: React.FC = () => {
                               <p className="paper-display-value">
                                 {selectedDischargedRef.treatmentReport.patientSignDate
                                   ? new Date(selectedDischargedRef.treatmentReport.patientSignDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })
-                                  : 'N/A'}
+                                  : 'Awaiting signature'}
                               </p>
                             </div>
                           </div>
@@ -2561,13 +2620,9 @@ export const PatientTreatment: React.FC = () => {
               )}
             </div>
 
-            <div className="modal-footer bg-lightest">
-              <button
-                type="button"
-                onClick={() => setSelectedDischargedRef(null)}
-                className="btn btn-secondary w-full"
-              >
-                Close Case Summary File
+            <div className="case-file-footer">
+              <button type="button" onClick={() => setSelectedDischargedRef(null)} className="case-file-back">
+                <ArrowLeft size={17} /> Back to Patient Care
               </button>
             </div>
           </div>
@@ -2596,6 +2651,211 @@ export const PatientTreatment: React.FC = () => {
           min-width: 0;
         }
 
+        .legacy-admin-authorization {
+          display: none;
+        }
+        .legacy-case-file-endorsements {
+          display: none !important;
+        }
+        .awaiting-signature-label {
+          color: var(--text-muted) !important;
+          font-size: 0.78rem;
+          font-style: italic;
+          font-weight: 600;
+        }
+
+        .admin-authorization-panel {
+          border: 1px solid rgba(14, 165, 233, 0.35);
+          background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(19, 28, 46, 0.85));
+          border-radius: 13px;
+          padding: 0.85rem 1rem;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .admin-authorization-heading {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 1rem;
+          margin-bottom: 0.65rem;
+        }
+        .admin-authorization-eyebrow,
+        .admin-signature-role {
+          display: block;
+          color: var(--primary);
+          font-size: 0.68rem;
+          font-weight: 800;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+        .admin-authorization-heading h2 {
+          margin: 0.1rem 0 0;
+          color: var(--text-primary);
+          font-size: 0.95rem;
+        }
+        .admin-authorization-status {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          flex-shrink: 0;
+          border: 1px solid rgba(16, 185, 129, 0.35);
+          border-radius: 999px;
+          background: rgba(16, 185, 129, 0.12);
+          color: #34d399;
+          padding: 0.35rem 0.6rem;
+          font-size: 0.7rem;
+          font-weight: 800;
+        }
+        .admin-authorization-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 0.65rem;
+        }
+        .admin-signature-card {
+          min-width: 0;
+          border: 1px solid var(--border-color);
+          border-radius: 9px;
+          background: var(--bg-secondary);
+          padding: 0.65rem 0.75rem;
+        }
+        .admin-signature-card strong {
+          display: block;
+          margin: 0.2rem 0 0.4rem;
+          color: var(--text-primary);
+          font-size: 0.82rem;
+        }
+        .admin-signature-preview {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          height: 44px;
+          overflow: hidden;
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          background: var(--bg-primary);
+        }
+        .admin-signature-preview img {
+          max-width: 90%;
+          max-height: 34px;
+          object-fit: contain;
+        }
+        .admin-signature-preview span,
+        .admin-signature-date {
+          color: var(--text-muted);
+          font-size: 0.7rem;
+        }
+        .admin-signature-date {
+          display: block;
+          margin-top: 0.35rem;
+        }
+
+        .case-file-page {
+          position: fixed;
+          inset: 0;
+          z-index: 3000;
+          overflow-y: auto;
+          background: var(--bg-primary);
+          padding: 1.5rem;
+        }
+        .case-file-content {
+          width: min(100%, 1000px);
+          margin: 0 auto;
+          overflow: hidden;
+          border: 1px solid var(--border-color);
+          border-radius: 16px;
+          background: var(--bg-secondary);
+          box-shadow: var(--shadow-lg);
+        }
+        .case-file-toolbar,
+        .case-file-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          padding: 1rem 1.25rem;
+          background: var(--bg-secondary);
+          border-bottom: 1px solid var(--border-color);
+        }
+        .case-file-footer {
+          border-top: 1px solid var(--border-color);
+          border-bottom: 0;
+          justify-content: flex-start;
+        }
+        .case-file-back {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45rem;
+          border: 1px solid var(--border-color);
+          border-radius: 8px;
+          background: var(--bg-primary);
+          color: var(--text-primary);
+          cursor: pointer;
+          padding: 0.55rem 0.8rem;
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
+        .case-file-back:hover {
+          border-color: var(--primary);
+          color: var(--primary);
+        }
+        .case-file-body {
+          max-height: none !important;
+          overflow: visible !important;
+          background: var(--bg-secondary) !important;
+          color: var(--text-primary) !important;
+        }
+        .case-file-body > .admin-authorization-panel {
+          margin-bottom: 1.25rem;
+        }
+        .case-file-page .paper-form-title-section,
+        .case-file-page .paper-section,
+        .case-file-page .bg-paper-light,
+        .case-file-page .signature-check-wrapper.checked,
+        .case-file-page .paper-textarea-display,
+        .case-file-page .paper-billing-table th,
+        .case-file-page .table-total-row td {
+          background: var(--bg-primary) !important;
+          border-color: var(--border-color) !important;
+        }
+        .case-file-page .paper-section-header {
+          background: var(--primary-light) !important;
+          border-color: var(--border-color) !important;
+        }
+        .case-file-page .paper-form-title-section *,
+        .case-file-page .paper-section *,
+        .case-file-page .paper-display-value,
+        .case-file-page .paper-label {
+          color: var(--text-primary) !important;
+        }
+        .case-file-page .paper-label,
+        .case-file-page .paper-form-title-section p,
+        .case-file-page .paper-display-value + span {
+          color: var(--text-muted) !important;
+        }
+        .case-file-page .paper-billing-table td,
+        .case-file-page .paper-billing-table th {
+          border-color: var(--border-color) !important;
+        }
+
+        @media (max-width: 640px) {
+          .admin-authorization-heading,
+          .case-file-toolbar {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+          .admin-authorization-grid {
+            grid-template-columns: minmax(0, 1fr);
+          }
+          .case-file-page {
+            padding: 0;
+          }
+          .case-file-content {
+            width: 100%;
+            min-height: 100%;
+            border: 0;
+            border-radius: 0;
+          }
+        }
+
         .treatment-top-breadcrumb {
           font-size: 0.8rem;
           color: var(--text-muted);
@@ -2617,6 +2877,9 @@ export const PatientTreatment: React.FC = () => {
         }
 
         .treatment-btn-draft {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45rem;
           background-color: var(--bg-secondary);
           color: var(--text-primary);
           border: 1px solid var(--border-color);

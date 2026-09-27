@@ -28,7 +28,10 @@ import {
   Save,
   RotateCcw,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  ChevronDown,
+  Search,
+  SlidersHorizontal
 } from 'lucide-react';
 import { getReferralIdInfo, type ReferralRequest } from '../../types';
 
@@ -219,6 +222,8 @@ export const ReferralReview: React.FC = () => {
   const {
     referrals,
     updateReferralStatus,
+    approveMedicalBill,
+    cancelReferral,
     savedAdminSignatures,
     saveAdminSignatureProfile,
     deleteAdminSignatureProfile
@@ -232,7 +237,7 @@ export const ReferralReview: React.FC = () => {
   // Filters state
   const [referralSearch, setReferralSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [urgencyFilter, setUrgencyFilter] = useState('ALL');
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false);
 
   // Action states
   const [actionType, setActionType] = useState<'APPROVE' | 'REJECT' | 'MORE_INFO' | null>(null);
@@ -240,6 +245,9 @@ export const ReferralReview: React.FC = () => {
   const [moreInfoNotes, setMoreInfoNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [presetNotice, setPresetNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [caseDialog, setCaseDialog] = useState<'BILL' | 'CANCEL' | null>(null);
+  const [caseReason, setCaseReason] = useState('');
+  const [caseDialogError, setCaseDialogError] = useState<string | null>(null);
 
   // Section B Official Bank Management Authorization (Admin Endorsements)
   const [branchControllerSignName, setBranchControllerSignName] = useState('Alh. Ibrahim Garba');
@@ -287,7 +295,6 @@ export const ReferralReview: React.FC = () => {
   };
 
   const handleDeleteControllerPreset = async () => {
-    if (window.confirm("Delete the saved signature preset for Branch Controller? Any new referrals will require a new signature.")) {
       const res = await deleteAdminSignatureProfile('BRANCH_CONTROLLER');
       if (res.success) {
         setBranchControllerSignatureDataUrl('');
@@ -295,11 +302,9 @@ export const ReferralReview: React.FC = () => {
         setPresetNotice({ type: 'success', message: 'Branch Controller saved signature preset deleted.' });
         setTimeout(() => setPresetNotice(null), 4000);
       }
-    }
   };
 
   const handleDeleteSupportPreset = async () => {
-    if (window.confirm("Delete the saved signature preset for Branch Support Officer? Any new referrals will require a new signature.")) {
       const res = await deleteAdminSignatureProfile('BRANCH_SUPPORT');
       if (res.success) {
         setBranchSupportSignatureDataUrl('');
@@ -307,12 +312,11 @@ export const ReferralReview: React.FC = () => {
         setPresetNotice({ type: 'success', message: 'Branch Support Officer saved signature preset deleted.' });
         setTimeout(() => setPresetNotice(null), 4000);
       }
-    }
   };
 
   const handleSaveControllerPresetNow = async () => {
     if (!branchControllerSignatureDataUrl) {
-      alert("Please draw or upload a signature first.");
+      setPresetNotice({ type: 'error', message: 'Please draw or upload a signature first.' });
       return;
     }
     const res = await saveAdminSignatureProfile('BRANCH_CONTROLLER', {
@@ -328,7 +332,7 @@ export const ReferralReview: React.FC = () => {
 
   const handleSaveSupportPresetNow = async () => {
     if (!branchSupportSignatureDataUrl) {
-      alert("Please draw or upload a signature first.");
+      setPresetNotice({ type: 'error', message: 'Please draw or upload a signature first.' });
       return;
     }
     const res = await saveAdminSignatureProfile('BRANCH_SUPPORT', {
@@ -408,9 +412,7 @@ export const ReferralReview: React.FC = () => {
       ref.hospitalName.toLowerCase().includes(referralSearch.toLowerCase());
 
     const matchesStatus = statusFilter === 'ALL' || ref.status === statusFilter;
-    const matchesUrgency = urgencyFilter === 'ALL' || ref.urgencyLevel === urgencyFilter;
-
-    return matchesSearch && matchesStatus && matchesUrgency;
+    return matchesSearch && matchesStatus;
   });
 
   const totalCount = referrals.length;
@@ -491,50 +493,24 @@ export const ReferralReview: React.FC = () => {
 
           {/* Table Filters Bar */}
           <div className="flex flex-col w-full min-w-0 overflow-hidden">
-            <div className="bg-bg-secondary border border-border-color border-b-0 rounded-t-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="flex flex-wrap gap-3 items-center w-full md:w-auto">
-                {/* Search referrals */}
-                <input
-                  type="text"
-                  placeholder="Search referrals..."
-                  value={referralSearch}
-                  onChange={e => setReferralSearch(e.target.value)}
-                  className="px-3 py-1.5 text-xs rounded-lg border border-border-color bg-bg-primary text-text-primary outline-none w-full sm:w-[200px]"
-                />
-
-                {/* Filter by Status */}
-                <select
-                  value={statusFilter}
-                  onChange={e => setStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs rounded-lg border border-border-color bg-bg-primary text-text-primary cursor-pointer font-semibold outline-none"
-                >
-                  <option value="ALL">All Statuses</option>
-                  <option value="PENDING_ADMIN">Pending Review</option>
-                  <option value="APPROVED_FORWARDED">Approved & Forwarded</option>
-                  <option value="ACCEPTED">Accepted / Active</option>
-                  <option value="BILL_SUBMITTED">Bill Review Required</option>
-                  <option value="BILL_REJECTED">Bill Disputed</option>
-                  <option value="TREATMENT_COMPLETED">Treatment Completed</option>
-                  <option value="REJECTED">Rejected</option>
-                  <option value="INFO_REQUESTED">More Info Requested</option>
-                </select>
-
-                {/* Filter by Urgency */}
-                <select
-                  value={urgencyFilter}
-                  onChange={e => setUrgencyFilter(e.target.value)}
-                  className="px-3 py-1.5 text-xs rounded-lg border border-border-color bg-bg-primary text-text-primary cursor-pointer font-semibold outline-none"
-                >
-                  <option value="ALL">All Urgency Levels</option>
-                  <option value="ROUTINE">Routine</option>
-                  <option value="URGENT">Urgent</option>
-                  <option value="EMERGENCY">Emergency</option>
-                </select>
+            <div className="bg-bg-secondary border border-border-color border-b-0 rounded-t-xl p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_210px] xl:grid-cols-[minmax(0,1fr)_220px_auto] gap-3 items-end">
+              <div className="contents">
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-[0.65rem] font-extrabold uppercase tracking-wider text-text-muted">Find a referral</span>
+                  <span className="relative"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" /><input type="text" placeholder="Search by patient, ID or hospital..." value={referralSearch} onChange={e => setReferralSearch(e.target.value)} className="w-full pl-9 pr-3 py-2.5 text-xs rounded-lg border border-border-color bg-bg-primary text-text-primary outline-none focus:border-primary transition-colors" /></span>
+                </label>
+                <div className="relative flex flex-col gap-1.5">
+                  <span className="text-[0.65rem] font-extrabold uppercase tracking-wider text-text-muted flex items-center gap-1"><SlidersHorizontal size={12} />Case status</span>
+                  <button type="button" onClick={() => setStatusFilterOpen(value => !value)} className="w-full px-3 py-2.5 text-xs rounded-lg border border-border-color bg-bg-primary text-text-primary cursor-pointer font-bold flex items-center justify-between gap-3">
+                    <span>{({ ALL: 'All referrals', PENDING_ADMIN: 'Pending review', ACCEPTED: 'Accepted / active', BILL_SUBMITTED: 'Bills awaiting approval', BILL_REJECTED: 'Bills disputed', TREATMENT_COMPLETED: 'Treatment completed', CANCELLED: 'Cancelled / no show', REJECTED: 'Rejected', INFO_REQUESTED: 'Information requested', APPROVED_FORWARDED: 'Approved & forwarded' } as Record<string, string>)[statusFilter]}</span><ChevronDown size={15} className={statusFilterOpen ? 'rotate-180 transition-transform' : 'transition-transform'} />
+                  </button>
+                  {statusFilterOpen && <div className="absolute z-50 top-full left-0 mt-2 min-w-[235px] p-1.5 rounded-xl border border-border-color bg-bg-secondary shadow-xl">
+                    {[['ALL','All referrals'],['PENDING_ADMIN','Pending review'],['ACCEPTED','Accepted / active'],['BILL_SUBMITTED','Bills awaiting approval'],['BILL_REJECTED','Bills disputed'],['TREATMENT_COMPLETED','Treatment completed'],['CANCELLED','Cancelled / no show'],['REJECTED','Rejected'],['INFO_REQUESTED','Information requested']].map(([value, label]) => <button key={value} type="button" onClick={() => { setStatusFilter(value); setStatusFilterOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold cursor-pointer ${statusFilter === value ? 'bg-primary text-white' : 'text-text-secondary hover:bg-bg-primary'}`}>{label}</button>)}
+                  </div>}
+                </div>
               </div>
 
-              <span className="text-xs text-text-secondary font-medium shrink-0">
-                Total found: {filteredReferrals.length} case(s)
-              </span>
+              <div className="shrink-0 flex items-center gap-2 px-3 py-2.5 rounded-lg bg-bg-primary border border-border-color text-xs text-text-secondary sm:col-span-2 xl:col-span-1 xl:self-end"><span className="w-2 h-2 rounded-full bg-primary" /><span><strong className="text-text-primary">{filteredReferrals.length}</strong> referral{filteredReferrals.length === 1 ? '' : 's'} shown</span></div>
             </div>
 
             {/* Desktop Table View */}
@@ -1551,9 +1527,52 @@ export const ReferralReview: React.FC = () => {
                   )}
                 </div>
               )}
+
+              {selectedRef.status === 'BILL_SUBMITTED' && (
+                <div className="border-t border-border-color pt-6 mt-6 flex flex-col gap-3">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-text-primary m-0 flex items-center gap-2"><Receipt size={16} className="text-primary" />Beneficiary Bill Exception</h3>
+                  <p className="text-xs text-text-secondary m-0">Use this only when the beneficiary cannot sign. The original beneficiary remains on the bill and the admin action is retained in the audit record.</p>
+                  <button
+                    type="button"
+                    onClick={() => { setCaseReason(''); setCaseDialogError(null); setCaseDialog('BILL'); }}
+                    className="w-full sm:w-auto px-4 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm transition-all cursor-pointer"
+                  >Approve Bill on Beneficiary's Behalf</button>
+                </div>
+              )}
+
+              {['PENDING_ADMIN', 'INFO_REQUESTED', 'APPROVED_FORWARDED', 'ACCEPTED'].includes(selectedRef.status) && (
+                <div className="border-t border-border-color pt-6 mt-6 flex flex-col gap-3">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-danger m-0 flex items-center gap-2"><XCircle size={16} />Cancel Referral / No Show</h3>
+                  <p className="text-xs text-text-secondary m-0">Cancellation is not a discharge: it creates no treatment completion or medical-bill certification.</p>
+                  <button
+                    type="button"
+                    onClick={() => { setCaseReason(''); setCaseDialogError(null); setCaseDialog('CANCEL'); }}
+                    className="w-full sm:w-auto px-4 py-3 rounded-lg border border-rose-300 bg-rose-50 text-rose-700 font-bold text-sm transition-all cursor-pointer"
+                  >Cancel Referral</button>
+                </div>
+              )}
+
+              {selectedRef.status === 'CANCELLED' && (
+                <div className="border-t border-border-color pt-6 mt-6 text-xs text-text-secondary">
+                  <strong className="text-danger">Cancelled referral — not discharged.</strong><br />
+                  {selectedRef.cancelledByName || 'System'} cancelled this case {selectedRef.cancelledAt ? `on ${new Date(selectedRef.cancelledAt).toLocaleString()}` : ''}.<br />
+                  Reason: {selectedRef.cancellationReason || 'No reason recorded.'}
+                </div>
+              )}
             </div>
           )}
         </div>
+      )}
+
+      {caseDialog && selectedRef && createPortal(
+        <div className="fixed inset-0 z-[1200] bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={async e => { e.preventDefault(); if (!caseReason.trim()) { setCaseDialogError('Please provide a reason to continue.'); return; } const result = caseDialog === 'BILL' ? await approveMedicalBill(selectedRef.id, { onBehalfReason: caseReason, confirmedName: selectedRef.patientName || selectedRef.staffName }) : await cancelReferral(selectedRef.id, caseReason); if (result.success) { setCaseDialog(null); setPresetNotice({ type: 'success', message: result.message }); } else setCaseDialogError(result.message); }} className="w-full max-w-lg rounded-2xl border border-border-color bg-bg-secondary shadow-2xl p-6 flex flex-col gap-4">
+            <div><h3 className="m-0 text-lg font-extrabold text-text-primary">{caseDialog === 'BILL' ? 'Approve bill on beneficiary\'s behalf' : 'Cancel referral'}</h3><p className="mt-1 mb-0 text-sm text-text-secondary">{caseDialog === 'BILL' ? 'This will retain the beneficiary name and record your approval in the audit trail.' : 'This is a cancellation, not a clinical discharge or bill approval.'}</p></div>
+            <textarea autoFocus required rows={4} value={caseReason} onChange={e => setCaseReason(e.target.value)} placeholder={caseDialog === 'BILL' ? 'Why is the beneficiary unable to sign?' : 'Why is this referral being cancelled?'} className="p-3 rounded-lg border border-border-color bg-bg-primary text-text-primary text-sm outline-none" />
+            {caseDialogError && <p className="m-0 text-sm text-danger font-semibold">{caseDialogError}</p>}
+            <div className="flex justify-end gap-3"><button type="button" onClick={() => setCaseDialog(null)} className="px-4 py-2 rounded-lg border border-border-color bg-bg-primary text-text-secondary font-bold cursor-pointer">Back</button><button type="submit" className="px-4 py-2 rounded-lg bg-primary text-white font-bold cursor-pointer">Confirm</button></div>
+          </form>
+        </div>, document.body
       )}
 
       {/* VIEW COMPLETED DISCHARGE CASE SUMMARY MODAL (Section C & D Paper Style) */}

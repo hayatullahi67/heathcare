@@ -208,6 +208,10 @@ export const MedicalHistory: React.FC = () => {
 
   const handleApproveBill = async () => {
     if (!billReviewRef) return;
+    if (!patientSignatureImage) {
+      setBillActionError('Please draw your digital signature before approving this medical bill.');
+      return;
+    }
     setBillActionLoading(true);
     setBillActionError(null);
 
@@ -705,10 +709,8 @@ export const MedicalHistory: React.FC = () => {
                         <img src={patientSignatureImage} alt="Patient Signature" style={{ maxHeight: '46px', maxWidth: '100%', objectFit: 'contain' }} />
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowPatientSignModal(true)}
-                        style={{
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button type="button" onClick={() => setShowPatientSignModal(true)} style={{
                           height: '54px',
                           border: '2px dashed var(--border-color)',
                           borderRadius: '8px',
@@ -720,13 +722,15 @@ export const MedicalHistory: React.FC = () => {
                           alignItems: 'center',
                           justifyContent: 'center',
                           gap: '0.5rem',
-                          cursor: 'pointer',
+                          cursor: 'pointer', flex: 1,
                           transition: 'border-color 0.2s, background-color 0.2s'
                         }}
                       >
                         <PenTool size={16} />
                         <span>Draw Signature on Screen</span>
                       </button>
+                      <label title="Upload signature image" style={{ height: '54px', padding: '0 0.8rem', border: '2px dashed var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-primary)', color: '#38bdf8', fontWeight: 700, fontSize: '0.75rem', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>Upload<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => setPatientSignatureImage(String(reader.result)); reader.readAsDataURL(file); }} /></label>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -760,7 +764,7 @@ export const MedicalHistory: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setBillReviewRef(null)}
-                      disabled={billActionLoading}
+                      disabled={billActionLoading || !patientSignatureImage}
                       className="btn btn-secondary"
                       style={{ fontSize: '0.85rem', padding: '0.65rem 1.25rem', borderRadius: '8px' }}
                     >
@@ -781,11 +785,13 @@ export const MedicalHistory: React.FC = () => {
                         gap: '0.5rem',
                         padding: '0.65rem 1.5rem',
                         borderRadius: '8px',
-                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
+                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                        opacity: patientSignatureImage ? 1 : 0.55,
+                        cursor: patientSignatureImage ? 'pointer' : 'not-allowed'
                       }}
                     >
                       <CheckCircle size={18} />
-                      <span>{billActionLoading ? 'Processing Approval...' : 'Approve & Sign Medical Bill'}</span>
+                      <span>{billActionLoading ? 'Processing Approval...' : patientSignatureImage ? 'Approve & Sign Medical Bill' : 'Signature Required to Approve'}</span>
                     </button>
                   </div>
                 </div>

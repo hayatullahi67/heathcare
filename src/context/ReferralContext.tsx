@@ -70,8 +70,9 @@ interface ReferralContextType {
   ) => Promise<{ success: boolean; message: string }>;
   approveMedicalBill: (
     referralId: string,
-    options?: { patientSignatureImage?: string; confirmedName?: string }
+    options?: { patientSignatureImage?: string; confirmedName?: string; onBehalfReason?: string }
   ) => Promise<{ success: boolean; message: string }>;
+  cancelReferral: (referralId: string, reason: string) => Promise<{ success: boolean; message: string }>;
   rejectMedicalBill: (
     referralId: string,
     rejectionReason: string
@@ -663,7 +664,7 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const approveMedicalBill = async (
     referralId: string,
-    options?: { patientSignatureImage?: string; confirmedName?: string }
+    options?: { patientSignatureImage?: string; confirmedName?: string; onBehalfReason?: string }
   ): Promise<{ success: boolean; message: string }> => {
     if (!currentUser) {
       return { success: false, message: 'Authentication required to approve medical bill.' };
@@ -674,6 +675,12 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       return { success: false, message: 'Referral or medical bill not found.' };
     }
 
+    const isAdminApproval = currentUser.role === 'SUPER_ADMIN';
+    const isBeneficiary = currentUser.id === refObj.staffId;
+    if (!isAdminApproval && !isBeneficiary) return { success: false, message: 'Only the beneficiary or a Super Admin can approve this medical bill.' };
+    if (!isAdminApproval && !options?.patientSignatureImage) return { success: false, message: 'Your digital signature is required before approving this medical bill.' };
+    if (isAdminApproval && !options?.onBehalfReason?.trim()) return { success: false, message: 'An on-behalf approval reason is required.' };
+
     const now = new Date().toISOString();
     const updatedReport: TreatmentReport = {
       ...refObj.treatmentReport,
@@ -682,7 +689,10 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       confirmedByPatientName: options?.confirmedName || refObj.treatmentReport.confirmedByPatientName || currentUser.name,
       patientSignature: 'Digitally Signed & Confirmed',
       patientSignatureImage: options?.patientSignatureImage || refObj.treatmentReport.patientSignatureImage,
-      patientSignDate: now.split('T')[0]
+      patientSignDate: now.split('T')[0],
+      approvedOnBehalfBy: isAdminApproval ? currentUser.name : undefined,
+      approvedOnBehalfAt: isAdminApproval ? now : undefined,
+      approvalOnBehalfReason: isAdminApproval ? options?.onBehalfReason?.trim() : undefined
     };
 
     const updatedRef: ReferralRequest = {
@@ -720,6 +730,27 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {
       console.error("Error approving medical bill in Firestore:", e);
       return { success: false, message: 'Failed to approve medical bill.' };
+    }
+  };
+
+  const cancelReferral = async (referralId: string, reason: string): Promise<{ success: boolean; message: string }> => {
+    if (!currentUser || !['SUPER_ADMIN', 'HOSPITAL'].includes(currentUser.role)) return { success: false, message: 'Only an administrator or assigned hospital can cancel a referral.' };
+    if (!reason.trim()) return { success: false, message: 'A cancellation reason is required.' };
+    const refObj = referrals.find(r => r.id === referralId);
+    if (!refObj) return { success: false, message: 'Referral request not found.' };
+    if (currentUser.role === 'HOSPITAL' && currentUser.hospitalId !== refObj.hospitalId) return { success: false, message: 'You can only cancel referrals assigned to your hospital.' };
+    if (['TREATMENT_COMPLETED', 'CANCELLED'].includes(refObj.status)) return { success: false, message: 'Completed or already-cancelled referrals cannot be cancelled.' };
+    const now = new Date().toISOString();
+    const updatedRef: ReferralRequest = { ...refObj, status: 'CANCELLED', cancellationReason: reason.trim(), cancelledAt: now, cancelledByName: currentUser.name, cancelledByRole: currentUser.role, updatedAt: now };
+    try {
+      await setDoc(doc(db, 'referrals', referralId), cleanFirestoreData(updatedRef));
+      await addNotification(refObj.staffId, 'Referral Cancelled', `${currentUser.name} cancelled your referral to ${refObj.hospitalName}. Reason: ${reason.trim()}`, referralId);
+      if (currentUser.role === 'HOSPITAL') await addNotification('usr-admin', 'Hospital Cancelled Referral', `${currentUser.name} cancelled referral ${referralId}. Reason: ${reason.trim()}`, referralId);
+      logActivity('CANCEL_REFERRAL', `${currentUser.name} cancelled referral ${referralId}. Reason: ${reason.trim()}`);
+      return { success: true, message: 'Referral cancelled separately from a treatment discharge.' };
+    } catch (e) {
+      console.error('Error cancelling referral:', e);
+      return { success: false, message: 'Failed to cancel referral.' };
     }
   };
 
@@ -1043,6 +1074,7 @@ export const ReferralProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         acceptReferral,
         completeTreatment,
         approveMedicalBill,
+        cancelReferral,
         rejectMedicalBill,
         resubmitMedicalBill,
         declineReferral,
